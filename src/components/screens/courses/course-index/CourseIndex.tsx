@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import Collapse from '@mui/material/Collapse';
 import Link from '@mui/material/Link';
 import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
@@ -97,12 +98,17 @@ function IndexItem({ activity: a, current }: { activity: IndexActivity; current:
   );
   const indent = { pl: 4.5, pr: 1.5, py: 0.5 };
 
-  return a.href ? (
-    <ListItemButton href={a.href} selected={current} aria-current={current ? 'page' : undefined}
-      sx={{ ...indent, borderLeft: 4, borderColor: current ? 'primary.main' : 'transparent' }}>
-      {content}
-    </ListItemButton>
-  ) : (
-    <ListItemButton disabled sx={{ ...indent, opacity: '1 !important' }}>{content}</ListItemButton>
+  // Each activity is an <li>, so screen readers announce the list and how many items it has.
+  return (
+    <ListItem disablePadding>
+      {a.href ? (
+        <ListItemButton href={a.href} selected={current} aria-current={current ? 'page' : undefined}
+          sx={{ ...indent, borderLeft: 4, borderColor: current ? 'primary.main' : 'transparent' }}>
+          {content}
+        </ListItemButton>
+      ) : (
+        <ListItemButton disabled sx={{ ...indent, opacity: '1 !important' }}>{content}</ListItemButton>
+      )}
+    </ListItem>
   );
 }

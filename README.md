@@ -139,6 +139,32 @@ Design decisions:
 
 Good next features: grades (`gradereport_user_get_grade_items`), badges (`core_badges_get_user_badges`), upcoming events (`core_calendar_get_calendar_upcoming_view`), and quizzes (`mod_quiz_*`).
 
+## Testing
+
+End-to-end tests in `e2e/` use [Playwright](https://playwright.dev): a real browser drives the real app, which talks to a **mock Moodle** (`e2e/mock-moodle.mjs`) instead of yours. The tests are repeatable and never change your Moodle's data.
+
+```bash
+npx playwright install chromium   # once: downloads the test browser
+npm run test:e2e                  # builds the app, starts it and the mock Moodle, runs every test
+npm run test:e2e:ui               # Playwright's UI: pick tests, watch them run, step back through each one
+npx playwright show-report        # the HTML report from the last run
+```
+
+The app runs on port 3100 and the mock Moodle on 8099, so tests don't clash with `npm run dev` on 3000.
+
+What's covered:
+
+| File | Checks |
+|---|---|
+| `auth.spec.ts` | Login required; Moodle's own error messages; logout; the token never reaches the browser |
+| `courses.spec.ts` | Dashboard, catalogue, course page; hidden courses never shown; not-enrolled message; Mark as done updates button, progress bar, course index and dashboard |
+| `activities.spec.ts` | Activities open in the app; links in Moodle content rewritten; Previous/Next order; URL, assignment and not-yet-supported activities; hidden activities not found |
+| `course-index.spec.ts` | Sections, completion and current activity; sections open/close; hide/show remembered; hidden index not reachable by keyboard |
+| `mobile.spec.ts` | Phone-sized screen: the course index drawer; no sideways scrolling |
+| `accessibility.spec.ts` | Automated WCAG 2.2 A/AA checks (axe) on every page |
+
+The mock Moodle's data is described at the top of `e2e/mock-moodle.mjs`: log in as `student` / `secret`. When you add a feature that calls a new Moodle web service, add that function to the mock, then a test.
+
 ## Troubleshooting
 
 | Problem | Fix |

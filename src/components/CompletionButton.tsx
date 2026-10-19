@@ -28,9 +28,10 @@ export function CompletionButton({ module: m, courseid, size = 'medium' }: {
       <input type="hidden" name="cmid" value={m.id} />
       <input type="hidden" name="completed" value={complete ? '0' : '1'} />
       <Button type="submit" size={size} variant={complete ? 'contained' : 'outlined'} color={complete ? 'success' : 'secondary'}
-        startIcon={complete ? <CheckIcon /> : undefined}
-        aria-label={complete ? `${m.name}: done. Mark as not done` : `Mark ${m.name} as done`}>
-        {complete ? 'Done' : 'Mark as done'}
+        startIcon={complete ? <CheckIcon /> : undefined}>
+        {/* The accessible name starts with the visible text (WCAG 2.5.3, Label in Name), so
+            "click Mark as done" works with voice control; the hidden part says which activity. */}
+        {complete ? 'Done' : 'Mark as done'}<span className="visually-hidden">{complete ? ` – ${m.name}. Select to mark as not done` : ` for ${m.name}`}</span>
       </Button>
     </form>
   );

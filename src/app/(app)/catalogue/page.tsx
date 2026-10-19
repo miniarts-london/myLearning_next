@@ -3,7 +3,7 @@ import { Suspense } from 'react';
 import { verifySession } from '@/lib/dal';
 import { moodle } from '@/lib/moodle';
 import { Loading } from '@/components/Loading';
-import { CatalogueScreen } from '@/components/screens/Catalogue';
+import { CatalogueScreen } from '@/components/screens/courses/Catalogue';
 
 export const metadata: Metadata = { title: 'Course catalogue' };
 
