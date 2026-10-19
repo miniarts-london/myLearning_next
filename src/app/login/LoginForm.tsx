@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import Button from '@mui/material/Button';
 import { login, type LoginState } from './actions';
 
 export function LoginForm() {
@@ -19,9 +20,9 @@ export function LoginForm() {
           aria-describedby={state.error ? 'login-error' : undefined} />
       </div>
       <p id="login-error" className="login__error" role="alert">{state.error}</p>
-      <button type="submit" className="btn btn--primary btn--block" disabled={pending}>
+      <Button type="submit" variant="contained" color="primary" size="large" fullWidth loading={pending} loadingPosition="end">
         {pending ? 'Logging in…' : 'Log in'}
-      </button>
+      </Button>
     </form>
   );
 }

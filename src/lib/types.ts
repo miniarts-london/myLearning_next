@@ -18,6 +18,7 @@ export interface EnrolledCourse {
   category: number;
   courseimage?: string;
   progress: number | null; // 0–100, or null when completion tracking is off
+  visible?: number; // 0 when hidden from students
   completed?: boolean;
 }
 
@@ -28,6 +29,7 @@ export interface Course {
   categoryid: number;
   categoryname: string;
   courseimage?: string;
+  visible: number; // 0 when hidden from students
 }
 
 export interface Category {
@@ -37,6 +39,7 @@ export interface Category {
   parent: number;
   coursecount: number;
   sortorder: number;
+  visible: number; // 0 when hidden from students
 }
 
 export interface CompletionData {
@@ -52,7 +55,8 @@ export interface CourseModule {
   url?: string;
   modicon: string;
   description?: string; // Labels carry their content here
-  uservisible: boolean;
+  visible: number; // 0 when hidden from students
+  uservisible: boolean; // Whether *this user* may open it (admins and teachers can open hidden ones)
   completiondata?: CompletionData;
 }
 
@@ -61,6 +65,7 @@ export interface CourseSection {
   name: string;
   summary: string;
   section: number;
+  visible?: number; // 0 when hidden from students
   uservisible?: boolean;
   modules: CourseModule[];
 }

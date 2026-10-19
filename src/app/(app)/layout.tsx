@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Button from '@mui/material/Button';
 import { Suspense } from 'react';
 import { verifySession } from '@/lib/dal';
 import { logout } from '../login/actions';
@@ -23,7 +24,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <UserName />
             </Suspense>
             <form action={logout}>
-              <button type="submit" className="btn btn--outline btn--small">Log out</button>
+              <Button type="submit" variant="outlined" color="secondary" size="small">Log out</Button>
             </form>
           </div>
         </div>

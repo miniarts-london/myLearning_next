@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 
 const links = [
   { href: '/dashboard', label: 'Dashboard' },
-  { href: '/catalogue', label: 'Course catalogue' },
+  { href: '/catalogue', label: 'Courses' },
 ];
 
 // A client component only so the current page can be marked with aria-current.

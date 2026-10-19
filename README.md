@@ -60,6 +60,18 @@ npm run lint
 
 Log in with a Moodle username and password.
 
+## Theme and colours
+
+The UI uses [Material UI](https://mui.com/material-ui/) (MUI 9). Colours, font and shapes live in one place, `src/theme.ts`:
+
+- `palette.primary`: the MyLearning yellow (main buttons, skip link, focus ring, section underlines)
+- `palette.secondary`: black (outline buttons, links, borders)
+- `palette.success`: green (progress bars, Done buttons)
+
+The theme has `cssVariables: true`, so MUI also publishes every value as a CSS variable (`--mui-palette-primary-main`…). `globals.css` reads those through short names (`--primary`, `--secondary`, `--success`…), so plain CSS and MUI components always match. Change a colour in `theme.ts` and both update. If you make `primary` dark, also change its `contrastText` to `#fff`.
+
+`src/app/layout.tsx` wraps the app in `AppRouterCacheProvider` (collects MUI's styles during server rendering, so pages arrive already styled) and `ThemeProvider`. MUI components are client components, but server pages can render them; data fetching and the Moodle token stay on the server.
+
 ## How the code is organised
 
 ```
@@ -70,16 +82,29 @@ src/
 │   ├── types.ts                     Types for the Moodle responses the app uses
 │   ├── session.ts                   Encrypted session cookie (jose, A256GCM): create, read, delete
 │   ├── dal.ts                       verifySession(): the real auth check, used by every page and action
-│   └── files.ts                     fileUrl(): points Moodle file links at /api/file
-├── components/                      CourseCard, ProgressBar, NavLinks, SafeHtml (sanitised Moodle HTML), Loading
+│   ├── files.ts                     fileUrl(): points Moodle file links at /api/file
+│   └── links.ts                     Rewrites Moodle links to the app's own pages
+├── theme.ts                         MUI theme: colours, font, button styles
+├── actions/completion.ts            Mark as done Server Action
+├── components/
+│   ├── screens/                     One screen per page: Dashboard, Catalogue, Course, Activity, Login
+│   └── …                            CourseCard, ProgressBar, CompletionButton, NavLinks, SafeHtml, Loading
 └── app/
     ├── login/                       Log in page, form (useActionState) and the login/logout Server Actions
     ├── (app)/layout.tsx             Header and navigation for logged-in pages
     ├── (app)/dashboard/             My courses
     ├── (app)/catalogue/             Courses by category
-    ├── (app)/courses/[id]/          Course page, and the Mark as done Server Action
+    ├── (app)/courses/[id]/          Course page, and activities/[cmid]/ for each activity
+    ├── (app)/activities/[cmid]/     Redirects Moodle activity links to the right course
     └── api/file/route.ts            Streams Moodle files with the token added on the server
 ```
+
+**Pages and screens.** Every page is split in two:
+
+- `app/…/page.tsx` gets the data: checks the session, calls Moodle, handles "not found", and shapes the data. It never contains layout markup.
+- `components/screens/<Name>.tsx` shows it: it receives plain, typed props and has no data fetching, so it's easy to read, restyle and test (for example with sample data in Storybook or a unit test).
+
+To add a page, write the screen first with the props it needs, then a `page.tsx` that fetches those props and renders `<NameScreen … />`.
 
 Design decisions:
 

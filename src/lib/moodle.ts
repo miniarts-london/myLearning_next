@@ -80,24 +80,38 @@ export async function getToken(username: string, password: string): Promise<stri
   return data.token;
 }
 
+// This is a learner-facing app, so it shows what a student sees. Moodle returns hidden
+// courses, categories, sections and activities to admins and teachers (they're allowed
+// to see them), so they're filtered out here, in one place, for everyone.
+const shown = <T extends { visible?: number }>(item: T) => item.visible !== 0;
+
+function learnerView(sections: CourseSection[]): CourseSection[] {
+  return sections
+    .filter((s) => shown(s) && s.uservisible !== false)
+    .map((s) => ({ ...s, modules: s.modules.filter((m) => shown(m) && m.uservisible) }));
+}
+
 // One function per web service the app uses, so pages read like plain function calls.
 export const moodle = {
   siteInfo: (token: string) => call<SiteInfo>(token, 'core_webservice_get_site_info'),
 
-  myCourses: (token: string, userid: number) =>
-    call<EnrolledCourse[]>(token, 'core_enrol_get_users_courses', { userid }),
+  myCourses: async (token: string, userid: number) =>
+    (await call<EnrolledCourse[]>(token, 'core_enrol_get_users_courses', { userid })).filter(shown),
 
   allCourses: async (token: string) =>
     (await call<{ courses: Course[] }>(token, 'core_course_get_courses_by_field')).courses
-      .filter((course) => course.categoryid !== 0), // Leave out the site home "course".
+      .filter((course) => course.categoryid !== 0 && shown(course)), // Leave out the site home "course".
 
-  categories: (token: string) => call<Category[]>(token, 'core_course_get_categories'),
+  categories: async (token: string) =>
+    (await call<Category[]>(token, 'core_course_get_categories')).filter(shown),
 
+  // undefined when the course doesn't exist or is hidden, so the page shows "not found".
   course: async (token: string, id: number) =>
-    (await call<{ courses: Course[] }>(token, 'core_course_get_courses_by_field', { field: 'id', value: id })).courses[0],
+    (await call<{ courses: Course[] }>(token, 'core_course_get_courses_by_field', { field: 'id', value: id }))
+      .courses.find(shown),
 
-  courseContents: (token: string, courseid: number) =>
-    call<CourseSection[]>(token, 'core_course_get_contents', { courseid }),
+  courseContents: async (token: string, courseid: number) =>
+    learnerView(await call<CourseSection[]>(token, 'core_course_get_contents', { courseid })),
 
   courseModule: async (token: string, cmid: number) =>
     (await call<{ cm: CourseModuleInfo }>(token, 'core_course_get_course_module', { cmid })).cm,
