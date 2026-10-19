@@ -1,5 +1,9 @@
-import Link from 'next/link';
+import Alert from '@mui/material/Alert';
+import Link from '@mui/material/Link';
+import Typography from '@mui/material/Typography';
 import { CourseCard } from '@/components/CourseCard';
+import { CourseGrid } from '@/components/CourseGrid';
+import { SectionTitle } from '@/components/SectionTitle';
 import type { EnrolledCourse } from '@/lib/types';
 
 interface DashboardScreenProps {
@@ -10,21 +14,21 @@ interface DashboardScreenProps {
 export function DashboardScreen({ firstname, courses }: DashboardScreenProps) {
   return (
     <>
-      <h1>Welcome back, {firstname}</h1>
+      <Typography variant="h1" sx={{ mb: 3 }}>Welcome back, {firstname}</Typography>
       <section aria-labelledby="my-courses">
-        <h2 id="my-courses" className="section-title">My courses</h2>
+        <SectionTitle id="my-courses">My courses</SectionTitle>
         {courses.length === 0 ? (
-          <p className="empty">
-            You aren&apos;t enrolled in any courses yet. <Link href="/catalogue">Browse the course catalogue</Link>.
-          </p>
+          <Alert severity="info">
+            You aren&apos;t enrolled in any courses yet. <Link href="/catalogue">Browse the courses</Link>.
+          </Alert>
         ) : (
-          <ul className="grid" role="list">
+          <CourseGrid>
             {courses.map((course) => (
               <li key={course.id}>
                 <CourseCard id={course.id} name={course.fullname} image={course.courseimage} progress={course.progress} />
               </li>
             ))}
-          </ul>
+          </CourseGrid>
         )}
       </section>
     </>

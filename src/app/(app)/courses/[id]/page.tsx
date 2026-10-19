@@ -4,7 +4,7 @@ import { Suspense } from 'react';
 import { verifySession } from '@/lib/dal';
 import { moodle, moodleUrl, MoodleError } from '@/lib/moodle';
 import { Loading } from '@/components/Loading';
-import { CourseScreen } from '@/components/screens/Course';
+import { CourseScreen } from '@/components/screens/courses/Course';
 
 type Props = { params: Promise<{ id: string }> };
 

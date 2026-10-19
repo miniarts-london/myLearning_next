@@ -62,15 +62,25 @@ Log in with a Moodle username and password.
 
 ## Theme and colours
 
-The UI uses [Material UI](https://mui.com/material-ui/) (MUI 9). Colours, font and shapes live in one place, `src/theme.ts`:
+The whole UI is built with [Material UI](https://mui.com/material-ui/) (MUI 9) and its icons. Colours, fonts and default component styles live in one place, `src/theme.ts`:
 
-- `palette.primary`: the MyLearning yellow (main buttons, skip link, focus ring, section underlines)
-- `palette.secondary`: black (outline buttons, links, borders)
+- `palette.primary`: the brand colour (main buttons, menu and heading underlines, skip link, focus ring)
+- `palette.secondary`: black (links, outline buttons)
 - `palette.success`: green (progress bars, Done buttons)
+- `typography`: the font and the h1–h3 heading styles
+- `components`: defaults for MUI components, e.g. `MuiButton` hover colours, flat `MuiCard`s, standard `MuiTextField`s
 
-The theme has `cssVariables: true`, so MUI also publishes every value as a CSS variable (`--mui-palette-primary-main`…). `globals.css` reads those through short names (`--primary`, `--secondary`, `--success`…), so plain CSS and MUI components always match. Change a colour in `theme.ts` and both update. If you make `primary` dark, also change its `contrastText` to `#fff`.
+Keep each colour's `contrastText` readable on it: at least 4.5:1 (white on the plum, black on a light yellow).
 
-`src/app/layout.tsx` wraps the app in `AppRouterCacheProvider` (collects MUI's styles during server rendering, so pages arrive already styled) and `ThemeProvider`. MUI components are client components, but server pages can render them; data fetching and the Moodle token stay on the server.
+MUI's `Link`, and any `Button` or `CardActionArea` with an `href`, go through Next.js routing (no full page reload) because the theme sets `LinkBehaviour` as their default link component. Links to other sites use `component="a"` with `target="_blank"`.
+
+Page layout uses MUI too: `AppBar` and `Container` for the frame, `Typography` for text, `Card` for courses, `List` for activities, `Breadcrumbs`, `Alert` for notices, `Chip` for automatic completion, `TextField` on the login form. Small shared pieces are in `src/components/` (`SectionTitle`, `CourseGrid`, `CourseCard`, `ProgressBar`, `CompletionButton`, `Loading`).
+
+`globals.css` is now short: the skip link, the focus ring, and styles for HTML that comes from Moodle (`SafeHtml`), which MUI components can't style.
+
+The theme has `cssVariables: true`, so MUI publishes every value as a CSS variable (`--mui-palette-primary-main`…); `globals.css` uses those, so it always matches the theme. MUI 9 no longer accepts style shortcuts as props (`<Typography fontWeight={600}>`); put them in `sx` instead (`sx={{ fontWeight: 600 }}`).
+
+`src/app/layout.tsx` wraps the app in `AppRouterCacheProvider` (collects MUI's styles during server rendering, so pages arrive already styled) and `ThemeProvider`. MUI components are client components, but server pages and screens can render them; data fetching and the Moodle token stay on the server.
 
 ## How the code is organised
 
@@ -88,16 +98,20 @@ src/
 ├── actions/completion.ts            Mark as done Server Action
 ├── components/
 │   ├── screens/                     One screen per page: Dashboard, Catalogue, Course, Activity, Login
-│   └── …                            CourseCard, ProgressBar, CompletionButton, NavLinks, SafeHtml, Loading
+│   ├── course-index/                The course index sidebar: CourseShell (open/close, phone drawer) and CourseIndex
+│   └── …                            CourseCard, CourseGrid, SectionTitle, ProgressBar, CompletionButton,
+│                                    NavLinks, SafeHtml, Loading, LinkBehaviour (MUI links → Next.js routing)
 └── app/
     ├── login/                       Log in page, form (useActionState) and the login/logout Server Actions
     ├── (app)/layout.tsx             Header and navigation for logged-in pages
     ├── (app)/dashboard/             My courses
     ├── (app)/catalogue/             Courses by category
-    ├── (app)/courses/[id]/          Course page, and activities/[cmid]/ for each activity
+    ├── (app)/courses/[id]/          Course page, activities/[cmid]/ for each activity, and layout.tsx (course index)
     ├── (app)/activities/[cmid]/     Redirects Moodle activity links to the right course
     └── api/file/route.ts            Streams Moodle files with the token added on the server
 ```
+
+**Course index.** `courses/[id]/layout.tsx` wraps the course page and all its activity pages, so the index stays put while you move between activities. It lists every section and activity (labels and hidden items left out), with completion ticks and the current activity highlighted. On wide screens it's a sidebar you can hide; the choice is remembered in the browser. On phones it's a drawer that closes when you pick an activity. The index and the page both need the course contents; `moodle.course()` and `moodle.courseContents()` are wrapped in React's `cache()`, so Moodle is only called once per request.
 
 **Pages and screens.** Every page is split in two:
 

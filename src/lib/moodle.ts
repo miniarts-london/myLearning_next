@@ -1,4 +1,5 @@
 import 'server-only';
+import { cache } from 'react';
 import type {
   Category, Course, CourseModuleInfo, CourseSection, EnrolledCourse, MoodleAssignment,
   MoodleException, MoodlePage, MoodleUrl, SiteInfo,
@@ -106,12 +107,14 @@ export const moodle = {
     (await call<Category[]>(token, 'core_course_get_categories')).filter(shown),
 
   // undefined when the course doesn't exist or is hidden, so the page shows "not found".
-  course: async (token: string, id: number) =>
+  // cache(): the course layout (course index) and the page both ask for this in the same
+  // request; Moodle is only called once.
+  course: cache(async (token: string, id: number) =>
     (await call<{ courses: Course[] }>(token, 'core_course_get_courses_by_field', { field: 'id', value: id }))
-      .courses.find(shown),
+      .courses.find(shown)),
 
-  courseContents: async (token: string, courseid: number) =>
-    learnerView(await call<CourseSection[]>(token, 'core_course_get_contents', { courseid })),
+  courseContents: cache(async (token: string, courseid: number) =>
+    learnerView(await call<CourseSection[]>(token, 'core_course_get_contents', { courseid }))),
 
   courseModule: async (token: string, cmid: number) =>
     (await call<{ cm: CourseModuleInfo }>(token, 'core_course_get_course_module', { cmid })).cm,

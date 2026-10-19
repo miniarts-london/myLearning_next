@@ -1,5 +1,13 @@
-import Link from 'next/link';
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Breadcrumbs from '@mui/material/Breadcrumbs';
 import Button from '@mui/material/Button';
+import Divider from '@mui/material/Divider';
+import Link from '@mui/material/Link';
+import Typography from '@mui/material/Typography';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { SafeHtml } from '@/components/SafeHtml';
 import { CompletionButton } from '@/components/CompletionButton';
 import { activityHref } from '@/lib/links';
@@ -23,33 +31,49 @@ interface ActivityScreenProps {
 export function ActivityScreen({ course, activity, detail, prev, next }: ActivityScreenProps) {
   return (
     <>
-      <p className="breadcrumb">
-        <Link href="/dashboard">Dashboard</Link> / <Link href={`/courses/${course.id}`}>{course.fullname}</Link>
-      </p>
-      <h1>{activity.name}</h1>
+      <Breadcrumbs sx={{ mb: 1, fontSize: '.875rem' }}>
+        <Link href="/dashboard">Dashboard</Link>
+        <Link href={`/courses/${course.id}`}>{course.fullname}</Link>
+      </Breadcrumbs>
+      <Typography variant="h1" sx={{ mb: 3 }}>{activity.name}</Typography>
 
-      <article className="activity-body">
+      <Box component="article" sx={{ maxWidth: '45rem', my: 3 }}>
         <ActivityBody detail={detail} />
-      </article>
+      </Box>
 
-      <div className="completion">
+      <Box sx={{ my: 3, '&:empty': { display: 'none' } }}>
         <CompletionButton module={activity} courseid={course.id} />
-      </div>
+      </Box>
 
-      <nav className="pager" aria-label="Activities in this course">
+      <Divider sx={{ mt: 4, mb: 2.5 }} />
+      <Box component="nav" aria-label="Activities in this course"
+        sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', sm: '1fr auto 1fr' }, gap: 2, alignItems: 'start' }}>
         {prev ? (
-          <Link href={activityHref(course.id, prev.id)} className="pager__link" rel="prev">
-            <span className="pager__label">Previous</span> {prev.name}
-          </Link>
+          <PagerLink href={activityHref(course.id, prev.id)} rel="prev" label="Previous" name={prev.name} />
         ) : <span />}
-        <Link href={`/courses/${course.id}`} className="pager__link pager__link--course">Back to course</Link>
+        <Link href={`/courses/${course.id}`}
+          sx={{ alignSelf: 'center', justifySelf: 'center', gridRow: { xs: 2, sm: 'auto' }, gridColumn: { xs: '1 / -1', sm: 'auto' } }}>
+          Back to course
+        </Link>
         {next ? (
-          <Link href={activityHref(course.id, next.id)} className="pager__link pager__link--next" rel="next">
-            <span className="pager__label">Next</span> {next.name}
-          </Link>
+          <PagerLink href={activityHref(course.id, next.id)} rel="next" label="Next" name={next.name} />
         ) : <span />}
-      </nav>
+      </Box>
     </>
+  );
+}
+
+function PagerLink({ href, rel, label, name }: { href: string; rel: 'prev' | 'next'; label: string; name: string }) {
+  const isNext = rel === 'next';
+  return (
+    <Button href={href} rel={rel} color="secondary"
+      startIcon={isNext ? undefined : <ArrowBackIcon />} endIcon={isNext ? <ArrowForwardIcon /> : undefined}
+      sx={{ justifySelf: isNext ? 'end' : 'start', textTransform: 'none', textAlign: isNext ? 'right' : 'left', px: 1 }}>
+      <Box component="span" sx={{ display: 'grid' }}>
+        <Typography component="span" variant="overline" sx={{ color: 'text.secondary' }}>{label}</Typography>
+        <Typography component="span" sx={{ fontWeight: 600 }}>{name}</Typography>
+      </Box>
+    </Button>
   );
 }
 
@@ -66,46 +90,43 @@ function ActivityBody({ detail }: { detail: ActivityDetail }) {
       return (
         <>
           <SafeHtml html={detail.intro} className="summary" />
-          <p>
-            <Button href={detail.externalurl} target="_blank" rel="noopener noreferrer" variant="contained" color="primary">
-              Open {new URL(detail.externalurl).hostname}<span className="visually-hidden"> (opens in a new tab)</span> ↗
-            </Button>
-          </p>
+          <Button component="a" href={detail.externalurl} target="_blank" rel="noopener noreferrer"
+            variant="contained" color="primary" endIcon={<OpenInNewIcon />}>
+            Open {new URL(detail.externalurl).hostname}<span className="visually-hidden"> (opens in a new tab)</span>
+          </Button>
         </>
       );
     case 'assign':
       return (
         <>
           {detail.duedate > 0 && (
-            <p className="due">
+            <Alert severity="warning" icon={false} sx={{ mb: 2, fontWeight: 600 }}>
               Due{' '}
               <time dateTime={new Date(detail.duedate * 1000).toISOString()}>
                 {new Date(detail.duedate * 1000).toLocaleString('en-GB', { dateStyle: 'full', timeStyle: 'short', timeZone: 'Europe/London' })}
               </time>
-            </p>
+            </Alert>
           )}
           <SafeHtml html={detail.intro} className="prose" />
-          <p className="note">
-            Submitting work isn&apos;t available in this app yet.{' '}
-            <MoodleLink href={detail.moodleUrl}>Submit in Moodle</MoodleLink>
-          </p>
+          <Alert severity="info" sx={{ mt: 2 }} action={<MoodleButton href={detail.moodleUrl}>Submit in Moodle</MoodleButton>}>
+            Submitting work isn&apos;t available in this app yet.
+          </Alert>
         </>
       );
     case 'other':
       return (
-        <p className="note">
-          This type of activity ({detail.modname}) isn&apos;t available in this app yet.{' '}
-          <MoodleLink href={detail.moodleUrl}>Open it in Moodle</MoodleLink>
-        </p>
+        <Alert severity="info" action={<MoodleButton href={detail.moodleUrl}>Open in Moodle</MoodleButton>}>
+          This type of activity ({detail.modname}) isn&apos;t available in this app yet.
+        </Alert>
       );
   }
 }
 
 // The few links that still go to Moodle open in a new tab, so this app stays open behind them.
-function MoodleLink({ href, children }: { href: string; children: React.ReactNode }) {
+function MoodleButton({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer">
-      {children}<span className="visually-hidden"> (opens Moodle in a new tab)</span> ↗
-    </a>
+    <Button component="a" href={href} target="_blank" rel="noopener noreferrer" color="inherit" size="small" endIcon={<OpenInNewIcon />}>
+      {children}<span className="visually-hidden"> (opens Moodle in a new tab)</span>
+    </Button>
   );
 }

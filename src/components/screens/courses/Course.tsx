@@ -1,0 +1,94 @@
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Breadcrumbs from '@mui/material/Breadcrumbs';
+import Link from '@mui/material/Link';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Paper from '@mui/material/Paper';
+import Typography from '@mui/material/Typography';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import { SafeHtml } from '@/components/SafeHtml';
+import { ProgressBar } from '@/components/ProgressBar';
+import { CompletionButton } from '@/components/CompletionButton';
+import { SectionTitle } from '@/components/SectionTitle';
+import { activityHref } from '@/lib/links';
+import type { Course, CourseModule, CourseSection } from '@/lib/types';
+
+interface CourseScreenProps {
+  course: Course;
+  sections: CourseSection[] | null; // null when the user isn't enrolled
+  progress: number | null;          // 0–100, or null when nothing is tracked
+  moodleCourseUrl: string;          // Where to enrol, in Moodle
+}
+
+export function CourseScreen({ course, sections, progress, moodleCourseUrl }: CourseScreenProps) {
+  return (
+    <>
+      <Breadcrumbs sx={{ mb: 1, fontSize: '.875rem' }}>
+        <Link href="/dashboard">Dashboard</Link>
+        <Typography sx={{ fontSize: 'inherit', color: 'text.secondary' }}>{course.categoryname}</Typography>
+      </Breadcrumbs>
+      <Typography variant="h1" sx={{ mb: 3 }}>{course.fullname}</Typography>
+      <SafeHtml html={course.summary} className="summary" />
+
+      {sections === null ? (
+        <Alert severity="info" sx={{ mt: 2 }}>
+          You aren&apos;t enrolled in this course.{' '}
+          <Link component="a" href={moodleCourseUrl} target="_blank" rel="noopener noreferrer">
+            Open it in Moodle<span className="visually-hidden"> (opens in a new tab)</span>
+            <OpenInNewIcon fontSize="inherit" sx={{ ml: 0.5, verticalAlign: 'middle' }} />
+          </Link>{' '}to enrol.
+        </Alert>
+      ) : (
+        <>
+          {progress !== null && <ProgressBar value={progress} label="Course progress" />}
+          {sections.map((section) => (
+            <section key={section.id} aria-labelledby={`section-${section.id}`}>
+              <SectionTitle id={`section-${section.id}`}>{section.name}</SectionTitle>
+              <SafeHtml html={section.summary} className="summary" />
+              <List disablePadding sx={{ display: 'grid', gap: 1 }}>
+                {section.modules.map((m) => (
+                  <Activity key={m.id} module={m} courseid={course.id} />
+                ))}
+              </List>
+            </section>
+          ))}
+        </>
+      )}
+    </>
+  );
+}
+
+function Activity({ module: m, courseid }: { module: CourseModule; courseid: number }) {
+  const complete = (m.completiondata?.state ?? 0) > 0;
+  const isLabel = m.modname === 'label';
+  return (
+    <Paper component="li" elevation={0}
+      sx={{ boxShadow: '0 0 1.25rem rgba(0, 0, 0, .06)', bgcolor: complete ? 'rgba(63, 112, 32, .07)' : 'background.paper' }}>
+      <ListItem component="div" sx={{ py: 1.5, gap: 2, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
+        {!isLabel && (
+          <ListItemIcon sx={{ minWidth: 0 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- Moodle's activity icon. */}
+            <img src={m.modicon} alt="" width={24} height={24} />
+          </ListItemIcon>
+        )}
+        {isLabel && m.description ? (
+          <Box sx={{ flex: 1 }}><SafeHtml html={m.description} className="activity__label" /></Box>
+        ) : (
+          <ListItemText
+            sx={{ flex: 1, m: 0 }}
+            primary={m.url ? (
+              // Activities open inside this app; types it can't show yet offer a link to Moodle from there.
+              <Link href={activityHref(courseid, m.id)} sx={{ fontWeight: 600 }}>{m.name}</Link>
+            ) : m.name}
+            secondary={isLabel ? undefined : m.modname}
+            slotProps={{ secondary: { variant: 'overline' } }}
+          />
+        )}
+        <CompletionButton module={m} courseid={courseid} size="small" />
+      </ListItem>
+    </Paper>
+  );
+}

@@ -1,10 +1,12 @@
 'use client';
 
 import { createTheme } from '@mui/material/styles';
+import type { LinkProps } from '@mui/material/Link';
+import { LinkBehaviour } from '@/components/LinkBehaviour';
 
 const plum = '#aa0766';
-const yellow = '#ffde00';
 const black = '#000';
+const ink = '#343a40'; // Headings
 
 // The one place to change the app's colours, fonts and shapes.
 // cssVariables: true also publishes every value as a CSS variable (--mui-palette-primary-main…),
@@ -12,7 +14,8 @@ const black = '#000';
 export const theme = createTheme({
   cssVariables: true,
   palette: {
-    primary: { main: plum, contrastText: black },   // MyLearning plum
+    // White text on plum: black text on plum is only about 3:1, below the 4.5:1 WCAG AA needs.
+    primary: { main: plum, contrastText: '#fff' },
     secondary: { main: black, contrastText: '#fff' },
     success: { main: '#3f7020', contrastText: '#fff' },   // Progress and "Done"
     error: { main: '#b00020' },
@@ -22,10 +25,20 @@ export const theme = createTheme({
   },
   typography: {
     fontFamily: '"Open Sans", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif',
+    h1: { fontSize: 'clamp(1.75rem, 1.4rem + 1.2vw, 2.25rem)', fontWeight: 300, lineHeight: 1.2, color: ink },
+    h2: { fontSize: '1.5rem', fontWeight: 300, lineHeight: 1.2, color: ink },
+    h3: { fontSize: '1.25rem', fontWeight: 400, lineHeight: 1.3, color: ink },
     button: { fontWeight: 400, letterSpacing: '.02em' },
+    overline: { fontSize: '.75rem', lineHeight: 1.5 },
   },
   shape: { borderRadius: 0 },
   components: {
+    // App links go through Next.js routing.
+    MuiLink: {
+      defaultProps: { component: LinkBehaviour, color: 'secondary' } as LinkProps,
+      styleOverrides: { root: { textUnderlineOffset: '.2em' } },
+    },
+    MuiButtonBase: { defaultProps: { LinkComponent: LinkBehaviour } },
     MuiButton: {
       defaultProps: { disableElevation: true },
       styleOverrides: {
@@ -35,18 +48,30 @@ export const theme = createTheme({
           variants: [
             { props: { size: 'small' }, style: { fontSize: '.75rem', padding: '.3rem .8rem' } },
             { props: { size: 'large' }, style: { fontSize: '1rem', minHeight: '3rem' } },
-            // The MyLearning hover: plum buttons turn black with plum text…
-            { props: { variant: 'contained', color: 'primary' }, style: { '&:hover': { backgroundColor: black, color: yellow } } },
+            // The MyLearning hover: coloured buttons turn black…
+            { props: { variant: 'contained', color: 'primary' }, style: { '&:hover': { backgroundColor: black, color: '#fff' } } },
             // …and black outline buttons fill black.
             { props: { variant: 'outlined', color: 'secondary' }, style: { '&:hover': { backgroundColor: black, color: '#fff' } } },
           ],
         },
       },
     },
+    MuiAppBar: {
+      defaultProps: { position: 'static', color: 'inherit', elevation: 0 },
+      styleOverrides: { root: { boxShadow: '0 2px 1rem rgba(0, 0, 0, .06)' } },
+    },
+    MuiCard: {
+      defaultProps: { elevation: 0 },
+      styleOverrides: { root: { boxShadow: '0 0 1.25rem rgba(0, 0, 0, .06)', height: '100%' } },
+    },
     MuiLinearProgress: {
-      styleOverrides: {
-        root: { height: '.5rem' },
-      },
+      styleOverrides: { root: { height: '.5rem' } },
+    },
+    MuiTextField: {
+      defaultProps: { variant: 'standard', fullWidth: true },
+    },
+    MuiInputLabel: {
+      styleOverrides: { root: { fontWeight: 600, textTransform: 'uppercase', color: ink } },
     },
   },
 });

@@ -1,12 +1,14 @@
+import Box from '@mui/material/Box';
 import LinearProgress from '@mui/material/LinearProgress';
+import Typography from '@mui/material/Typography';
 
 export function ProgressBar({ value, label }: { value: number; label: string }) {
   const rounded = Math.round(value);
   return (
-    <div className="progress">
+    <Box sx={{ display: 'grid', gap: 0.5, my: 2 }}>
       {/* LinearProgress sets role="progressbar" and aria-valuenow itself. */}
       <LinearProgress variant="determinate" value={rounded} color="success" aria-label={label} />
-      <span className="progress__value">{rounded}% complete</span>
-    </div>
+      <Typography variant="body2" sx={{ color: 'text.secondary' }}>{rounded}% complete</Typography>
+    </Box>
   );
 }
