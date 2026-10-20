@@ -19,6 +19,8 @@ export const theme = createTheme({
     secondary: { main: black, contrastText: '#fff' },
     success: { main: '#3f7020', contrastText: '#fff' },   // Progress and "Done"
     error: { main: '#b00020' },
+    // Darker than MUI's default orange (#ed6c02, about 3:1 on white), so warning text passes 4.5:1.
+    warning: { main: '#b45309', contrastText: '#fff' },
     text: { primary: '#48484d', secondary: '#5c5c62' },
     divider: '#e2e2e2',
     background: { default: '#fff', paper: '#fff' },

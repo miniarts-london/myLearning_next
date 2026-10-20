@@ -50,11 +50,11 @@ test('a URL activity offers the outside site in a new tab', async ({ page }) => 
   await expect(open).toHaveAttribute('target', '_blank');
 });
 
-test('an assignment shows its due date and sends submissions to Moodle in a new tab', async ({ page }) => {
+test('an assignment shows its due date, and sends file uploads to Moodle in a new tab', async ({ page }) => {
   await page.goto('/courses/2/activities/13');
   await expect(page.getByText(/^Due /)).toBeVisible();
   await expect(page.getByRole('article')).toContainText('Audit a web page against five WCAG criteria.');
-  await expect(page.getByRole('link', { name: /Submit in Moodle/ })).toHaveAttribute('target', '_blank');
+  await expect(page.getByRole('link', { name: /Add files in Moodle/ })).toHaveAttribute('target', '_blank');
 });
 
 test("activity types the app can't show yet link to Moodle", async ({ page }) => {

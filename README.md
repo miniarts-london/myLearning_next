@@ -111,6 +111,10 @@ src/
     └── api/file/route.ts            Streams Moodle files with the token added on the server
 ```
 
+**Assignments.** Learners write and submit online text answers in the app: save a draft, tick the submission statement if the assignment requires one, and submit for grading. Once submitted the work is shown read-only (or editable, if the assignment doesn't use drafts and Moodle allows changes), with the grade and feedback when marked. It uses `mod_assign_get_submission_status`, `mod_assign_save_submission` and `mod_assign_submit_for_grading`. Moodle makes every decision (open? allowed to edit?); the app only shows Moodle's answers as messages. The text is stored as HTML: what the learner types is escaped and blank lines become paragraphs (`lib/assignment.ts`). File uploads still go to Moodle in a new tab: they need Moodle's separate upload endpoint, which is a good next step.
+
+**Up next.** The dashboard lists deadlines across all your courses: overdue (last 2 weeks), today, tomorrow, this week and later (up to 4 weeks ahead). They come from Moodle's calendar "action events" (`core_calendar_get_action_events_by_timesort`), the same data as Moodle's Timeline block, so an item disappears once Moodle counts it as done (an assignment submitted, an activity completed). The pure logic (grouping, dates, links) is in `lib/upNext.ts`; loading it is in `lib/upNext.server.ts`. If the calendar can't be reached, the dashboard still shows your courses. Dates are shown in `APP_TIME_ZONE` (default `Europe/London`). To see items in your own Moodle, give activities a due date, or set "Expect completed on" in an activity's completion settings.
+
 **Course index.** `courses/[id]/layout.tsx` wraps the course page and all its activity pages, so the index stays put while you move between activities. It lists every section and activity (labels and hidden items left out), with completion ticks and the current activity highlighted. On wide screens it's a sidebar you can hide; the choice is remembered in the browser. On phones it's a drawer that closes when you pick an activity. The index and the page both need the course contents; `moodle.course()` and `moodle.courseContents()` are wrapped in React's `cache()`, so Moodle is only called once per request.
 
 **Pages and screens.** Every page is split in two:
@@ -159,7 +163,9 @@ What's covered:
 | `auth.spec.ts` | Login required; Moodle's own error messages; logout; the token never reaches the browser |
 | `courses.spec.ts` | Dashboard, catalogue, course page; hidden courses never shown; not-enrolled message; Mark as done updates button, progress bar, course index and dashboard |
 | `activities.spec.ts` | Activities open in the app; links in Moodle content rewritten; Previous/Next order; URL, assignment and not-yet-supported activities; hidden activities not found |
+| `assignment.spec.ts` | Empty answer caught; draft saved and kept; statement required to submit; submitted work read-only and off Up next; file uploads go to Moodle; accessibility of draft and submitted states |
 | `course-index.spec.ts` | Sections, completion and current activity; sections open/close; hide/show remembered; hidden index not reachable by keyboard |
+| `up-next.spec.ts` | Deadlines grouped and in order; hidden courses left out; links open in the app; finished activities drop off; dashboard still works if the calendar fails |
 | `mobile.spec.ts` | Phone-sized screen: the course index drawer; no sideways scrolling |
 | `accessibility.spec.ts` | Automated WCAG 2.2 A/AA checks (axe) on every page |
 

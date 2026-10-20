@@ -11,13 +11,15 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { SafeHtml } from '@/components/SafeHtml';
 import { CompletionButton } from '@/components/CompletionButton';
 import { activityHref } from '@/lib/links';
+import { AssignmentSubmission } from '@/components/AssignmentSubmission';
+import type { AssignmentView } from '@/lib/assignment';
 import type { Course, CourseModule } from '@/lib/types';
 
 // What the page fetched for this activity, depending on its type.
 export type ActivityDetail =
   | { kind: 'page'; intro: string; content: string }
   | { kind: 'url'; intro: string; externalurl: string }
-  | { kind: 'assign'; intro: string; duedate: number; moodleUrl: string }
+  | { kind: 'assign'; intro: string; duedate: number; moodleUrl: string; submission: AssignmentView | null }
   | { kind: 'other'; modname: string; moodleUrl: string }; // Not built in this app yet
 
 interface ActivityScreenProps {
@@ -38,7 +40,7 @@ export function ActivityScreen({ course, activity, detail, prev, next }: Activit
       <Typography variant="h1" sx={{ mb: 3 }}>{activity.name}</Typography>
 
       <Box component="article" sx={{ maxWidth: '45rem', my: 3 }}>
-        <ActivityBody detail={detail} />
+        <ActivityBody detail={detail} courseid={course.id} />
       </Box>
 
       <Box sx={{ my: 3, '&:empty': { display: 'none' } }}>
@@ -77,7 +79,7 @@ function PagerLink({ href, rel, label, name }: { href: string; rel: 'prev' | 'ne
   );
 }
 
-function ActivityBody({ detail }: { detail: ActivityDetail }) {
+function ActivityBody({ detail, courseid }: { detail: ActivityDetail; courseid: number }) {
   switch (detail.kind) {
     case 'page':
       return (
@@ -108,9 +110,15 @@ function ActivityBody({ detail }: { detail: ActivityDetail }) {
             </Alert>
           )}
           <SafeHtml html={detail.intro} className="prose" />
-          <Alert severity="info" sx={{ mt: 2 }} action={<MoodleButton href={detail.moodleUrl}>Submit in Moodle</MoodleButton>}>
-            Submitting work isn&apos;t available in this app yet.
-          </Alert>
+          {detail.submission ? (
+            <AssignmentSubmission view={detail.submission} courseid={courseid} moodleUrl={detail.moodleUrl}
+              submittedText={<SafeHtml html={detail.submission.html} className="prose" />}
+              feedback={detail.submission.feedbackHtml && <SafeHtml html={detail.submission.feedbackHtml} className="prose" />} />
+          ) : (
+            <Alert severity="warning" sx={{ mt: 2 }} action={<MoodleButton href={detail.moodleUrl}>Open in Moodle</MoodleButton>}>
+              Your submission couldn&apos;t be loaded.
+            </Alert>
+          )}
         </>
       );
     case 'other':

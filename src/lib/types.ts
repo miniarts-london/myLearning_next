@@ -100,7 +100,63 @@ export interface MoodleAssignment {
   cmid: number;
   name: string;
   intro: string;
-  duedate: number; // Unix seconds, 0 when there is no due date
+  duedate: number;                    // Unix seconds, 0 when there is no due date
+  cutoffdate?: number;                // No submissions after this (0 = none)
+  submissiondrafts: number;           // 1: learners save drafts, then press "Submit for grading"
+  requiresubmissionstatement: number; // 1: learners must agree to a statement when submitting
+  submissionstatement?: string;       // The statement's text (newer Moodle versions send it)
+  // Which submission types are switched on, e.g. { plugin: 'onlinetext', subtype: 'assignsubmission', name: 'enabled', value: '1' }
+  configs: { plugin: string; subtype: string; name: string; value: string }[];
+}
+
+// From mod_assign_get_submission_status: where this learner's submission stands.
+export interface AssignSubmissionPlugin {
+  type: string; // 'onlinetext', 'file', 'comments' (feedback)…
+  editorfields?: { name: string; text: string; format: number }[];
+  fileareas?: { area: string; files?: { filename: string; fileurl: string }[] }[];
+}
+
+export interface AssignSubmissionStatus {
+  lastattempt?: {
+    submission?: {
+      id: number;
+      status: 'new' | 'draft' | 'submitted' | 'reopened';
+      timemodified: number;
+      plugins?: AssignSubmissionPlugin[];
+    };
+    submissionsenabled: boolean;
+    locked: boolean;
+    graded: boolean;
+    canedit: boolean;   // May change the submission now
+    cansubmit: boolean; // May press "Submit for grading" now
+    gradingstatus?: string;
+  };
+  feedback?: {
+    gradefordisplay?: string;
+    gradeddate?: number;
+    plugins?: AssignSubmissionPlugin[];
+  };
+}
+
+// Moodle answers save/submit calls with a list of warnings; an empty list means it worked.
+export interface MoodleWarning {
+  item?: string;
+  warningcode?: string;
+  message: string;
+}
+
+// An "action event" from Moodle's calendar: something the learner needs to do by a date,
+// e.g. an assignment due date. Moodle drops the event once it's done (e.g. submitted).
+export interface CalendarActionEvent {
+  id: number;
+  name: string;          // e.g. "Accessibility audit is due"
+  activityname: string;  // e.g. "Accessibility audit"
+  modulename: string;    // e.g. "assign"
+  eventtype: string;     // e.g. "due", "expectcompletionon"
+  timesort: number;      // Unix seconds: the date that matters (due date, expected completion…)
+  url: string;           // The activity in Moodle: .../mod/assign/view.php?id=<cmid>
+  course: { id: number; fullname: string };
+  action?: { name: string; actionable: boolean };
 }
 
 export interface MoodleException {

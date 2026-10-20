@@ -6,6 +6,7 @@ import { moodle, moodleUrl, MoodleError } from '@/lib/moodle';
 import { Loading } from '@/components/Loading';
 import { ActivityScreen, type ActivityDetail } from '@/components/screens/Activity';
 import type { CourseModule } from '@/lib/types';
+import { toAssignmentView } from '@/lib/assignment';
 
 type Props = { params: Promise<{ id: string; cmid: string }> };
 
@@ -86,7 +87,14 @@ async function fetchDetail(token: string, courseid: number, m: CourseModule): Pr
     case 'assign': {
       const assignment = await orNull(moodle.assignment(token, courseid, m.id));
       if (assignment) {
-        return { kind: 'assign', intro: assignment.intro, duedate: assignment.duedate, moodleUrl: inMoodle };
+        const status = await orNull(moodle.submissionStatus(token, assignment.id));
+        return {
+          kind: 'assign',
+          intro: assignment.intro,
+          duedate: assignment.duedate,
+          moodleUrl: inMoodle,
+          submission: status ? toAssignmentView(assignment, status) : null,
+        };
       }
       break;
     }

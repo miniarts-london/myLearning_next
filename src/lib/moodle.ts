@@ -1,7 +1,7 @@
 import 'server-only';
 import { cache } from 'react';
 import type {
-  Category, Course, CourseModuleInfo, CourseSection, EnrolledCourse, MoodleAssignment,
+  AssignSubmissionStatus, CalendarActionEvent, Category, Course, CourseModuleInfo, MoodleWarning, CourseSection, EnrolledCourse, MoodleAssignment,
   MoodleException, MoodlePage, MoodleUrl, SiteInfo,
 } from './types';
 
@@ -131,6 +131,29 @@ export const moodle = {
   assignment: async (token: string, courseid: number, cmid: number) =>
     (await call<{ courses: { assignments: MoodleAssignment[] }[] }>(token, 'mod_assign_get_assignments', { courseids: [courseid] }))
       .courses[0]?.assignments.find((a) => a.cmid === cmid),
+
+  // Where this learner's submission stands (status, text, files, grade and feedback).
+  submissionStatus: (token: string, assignid: number) =>
+    call<AssignSubmissionStatus>(token, 'mod_assign_get_submission_status', { assignid }),
+
+  // Saves the learner's online text. Saved as a draft if the assignment uses drafts,
+  // otherwise as their submission. `itemid: 0`: no files embedded in the text.
+  saveOnlineText: (token: string, assignmentid: number, html: string) =>
+    call<MoodleWarning[]>(token, 'mod_assign_save_submission', {
+      assignmentid,
+      plugindata: { onlinetext_editor: { text: html, format: 1, itemid: 0 } }, // format 1 = HTML
+    }),
+
+  // Hands a draft in for marking. After this the learner usually can't change it.
+  submitForGrading: (token: string, assignmentid: number, acceptsubmissionstatement: boolean) =>
+    call<MoodleWarning[]>(token, 'mod_assign_submit_for_grading', { assignmentid, acceptsubmissionstatement }),
+
+  // Deadlines and other things to do across all the learner's courses, between two dates
+  // (Unix seconds). This is what Moodle's own Timeline block uses.
+  actionEvents: async (token: string, from: number, to: number) =>
+    (await call<{ events: CalendarActionEvent[] }>(token, 'core_calendar_get_action_events_by_timesort', {
+      timesortfrom: from, timesortto: to, limitnum: 50, limittononsuspendedevents: true,
+    })).events,
 
   setManualCompletion: (token: string, cmid: number, completed: boolean) =>
     call<{ status: boolean }>(token, 'core_completion_update_activity_completion_status_manually', { cmid, completed }),
