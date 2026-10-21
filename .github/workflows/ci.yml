@@ -19,6 +19,7 @@ jobs:
       - run: npm ci                        # clean install from package-lock.json
       - run: npm run lint
       - run: npx tsc --noEmit
+      - run: npm run test:unit               # React Testing Library (Vitest), a few seconds
 
   # 2. The Python AI service's tests
   ai-service:
