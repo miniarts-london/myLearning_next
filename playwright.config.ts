@@ -19,6 +19,9 @@ export default defineConfig({
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: `http://localhost:${APP_PORT}`,
+    // Skip animations (globals.css honours prefers-reduced-motion), so checks like
+    // colour contrast always see the final colours, not a fade halfway through.
+    contextOptions: { reducedMotion: 'reduce' },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     // Only needed where Playwright's own browser can't be downloaded.
