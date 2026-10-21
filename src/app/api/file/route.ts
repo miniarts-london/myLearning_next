@@ -2,6 +2,10 @@ import type { NextRequest } from 'next/server';
 import { readSession } from '@/lib/session';
 import { moodleUrl } from '@/lib/moodle';
 
+// Only these are shown in the page. Anything else (HTML, SVG, PDF, ...) is downloaded,
+// because a file served from this app's origin could otherwise run scripts as the learner.
+const INLINE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp']);
+
 // Streams a Moodle file (course image, image in a description) to the browser,
 // adding the user's token on the server so it never appears in the page.
 export async function GET(request: NextRequest) {
@@ -18,25 +22,43 @@ export async function GET(request: NextRequest) {
     return new Response('Bad file address', { status: 400 });
   }
 
-  // Only ever fetch files from our own Moodle: this must not become an open proxy.
+  // Only ever fetch files from our own Moodle: this must not become an open proxy,
+  // and the token must only go to Moodle's file scripts, not to any other page.
   const moodle = new URL(moodleUrl());
-  if (url.origin !== moodle.origin || !url.pathname.includes('/pluginfile.php')) {
+  const base = moodle.pathname.replace(/\/+$/, '');
+  if (url.origin !== moodle.origin) {
     return new Response('Not a Moodle file', { status: 400 });
   }
-
-  // pluginfile.php → webservice/pluginfile.php, which accepts the token.
-  if (!url.pathname.includes('/webservice/pluginfile.php')) {
-    url.pathname = url.pathname.replace('/pluginfile.php', '/webservice/pluginfile.php');
+  if (url.pathname.startsWith(`${base}/pluginfile.php/`)) {
+    // pluginfile.php → webservice/pluginfile.php, which accepts the token.
+    url.pathname = `${base}/webservice${url.pathname.slice(base.length)}`;
+  } else if (!url.pathname.startsWith(`${base}/webservice/pluginfile.php/`)) {
+    return new Response('Not a Moodle file', { status: 400 });
   }
   url.searchParams.set('token', session.token);
 
-  const file = await fetch(url, { cache: 'no-store' });
+  // Don't follow redirects: the token must not be carried anywhere else.
+  const file = await fetch(url, { cache: 'no-store', redirect: 'manual' });
   if (!file.ok || !file.body) {
-    return new Response('File not found', { status: file.status === 200 ? 404 : file.status });
+    return new Response('File not found', { status: file.status >= 400 ? file.status : 404 });
+  }
+
+  const type = (file.headers.get('Content-Type') ?? '').split(';')[0].trim().toLowerCase();
+  const inline = INLINE_TYPES.has(type);
+  let name = url.pathname.split('/').pop() || 'file';
+  try {
+    name = decodeURIComponent(name);
+  } catch {
+    // Keep the encoded name if it isn't valid percent-encoding.
   }
   return new Response(file.body, {
     headers: {
-      'Content-Type': file.headers.get('Content-Type') ?? 'application/octet-stream',
+      'Content-Type': inline ? type : 'application/octet-stream',
+      'Content-Disposition': inline
+        ? 'inline'
+        : `attachment; filename*=UTF-8''${encodeURIComponent(name)}`,
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Security-Policy': "sandbox; default-src 'none'",
       'Cache-Control': 'private, max-age=3600', // This user's browser only.
     },
   });
