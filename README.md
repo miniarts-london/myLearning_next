@@ -206,6 +206,20 @@ What's covered:
 
 The mock Moodle's data is described at the top of `e2e/mock-moodle.mjs`: log in as `student` / `secret`. When you add a feature that calls a new Moodle web service, add that function to the mock, then a test.
 
+### Component tests (React Testing Library)
+
+Screens and components are tested on their own with **Vitest** and **React Testing Library**: a component is rendered in a simulated browser (jsdom) with sample data, without Next.js, Moodle or a real browser, so they run in a couple of seconds.
+
+```bash
+npm test            # watch mode: re-runs as you save
+npm run test:unit   # run once (what CI runs)
+```
+
+- Tests sit next to the component: `Home.tsx` → `Home.test.tsx`.
+- Render with `renderWithTheme()` from `src/test/render.tsx` (the real MUI theme), and build sample data with `src/test/fixtures.ts`.
+- Find elements the way users do, by role and name (`getByRole('heading', { name: … })`), not by CSS classes.
+- The page/screen split is what makes this work: screens only take props. `async` server components (the `page.tsx` files) can't be rendered by Vitest, so their journeys are covered by the Playwright tests instead.
+
 ## Troubleshooting
 
 | Problem | Fix |
