@@ -41,7 +41,7 @@ function subscribe(listener: () => void) {
 
 // Lays out a course page with the course index beside it.
 // Wide screens: a sidebar you can show or hide. Phones: a drawer that slides in over the page.
-export function CourseShell({ index, children }: { index: React.ReactNode; children: React.ReactNode }) {
+export function CourseShell({ index, actions, children }: { index: React.ReactNode; actions?: React.ReactNode; children: React.ReactNode }) {
   const desktopOpen = useSyncExternalStore(subscribe, readOpen, () => true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 900px)'); // MUI's md breakpoint
@@ -104,6 +104,7 @@ export function CourseShell({ index, children }: { index: React.ReactNode; child
       </Drawer>
 
       <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 2, alignItems: 'center' }}>
         <Button onClick={toggle} color="secondary" size="small"
           aria-controls={INDEX_ID}
           aria-expanded={isDesktop ? desktopOpen : mobileOpen}
@@ -112,6 +113,8 @@ export function CourseShell({ index, children }: { index: React.ReactNode; child
           <span className="label-open">Hide course index</span>
           <span className="label-closed">Course index</span>
         </Button>
+        {actions}
+        </Box>
         {children}
       </Box>
     </Box>

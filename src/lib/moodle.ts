@@ -120,17 +120,26 @@ export const moodle = {
     (await call<{ cm: CourseModuleInfo }>(token, 'core_course_get_course_module', { cmid })).cm,
 
   // The mod_* functions return every activity of that type in the course; pick the one we want.
+  // Every page, URL or assignment in a course (Moodle returns them per course, not per activity).
+  pages: async (token: string, courseid: number) =>
+    (await call<{ pages: MoodlePage[] }>(token, 'mod_page_get_pages_by_courses', { courseids: [courseid] })).pages,
+
+  urls: async (token: string, courseid: number) =>
+    (await call<{ urls: MoodleUrl[] }>(token, 'mod_url_get_urls_by_courses', { courseids: [courseid] })).urls,
+
+  assignments: async (token: string, courseid: number) =>
+    (await call<{ courses: { assignments: MoodleAssignment[] }[] }>(token, 'mod_assign_get_assignments', { courseids: [courseid] }))
+      .courses[0]?.assignments ?? [],
+
+  // One activity of each kind, picked out of the course's list.
   page: async (token: string, courseid: number, cmid: number) =>
-    (await call<{ pages: MoodlePage[] }>(token, 'mod_page_get_pages_by_courses', { courseids: [courseid] }))
-      .pages.find((p) => p.coursemodule === cmid),
+    (await moodle.pages(token, courseid)).find((p) => p.coursemodule === cmid),
 
   url: async (token: string, courseid: number, cmid: number) =>
-    (await call<{ urls: MoodleUrl[] }>(token, 'mod_url_get_urls_by_courses', { courseids: [courseid] }))
-      .urls.find((u) => u.coursemodule === cmid),
+    (await moodle.urls(token, courseid)).find((u) => u.coursemodule === cmid),
 
   assignment: async (token: string, courseid: number, cmid: number) =>
-    (await call<{ courses: { assignments: MoodleAssignment[] }[] }>(token, 'mod_assign_get_assignments', { courseids: [courseid] }))
-      .courses[0]?.assignments.find((a) => a.cmid === cmid),
+    (await moodle.assignments(token, courseid)).find((a) => a.cmid === cmid),
 
   // Where this learner's submission stands (status, text, files, grade and feedback).
   submissionStatus: (token: string, assignid: number) =>

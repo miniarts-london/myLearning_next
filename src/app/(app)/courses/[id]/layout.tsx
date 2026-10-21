@@ -2,6 +2,8 @@ import { Suspense } from 'react';
 import { verifySession } from '@/lib/dal';
 import { moodle, MoodleError } from '@/lib/moodle';
 import { activityHref } from '@/lib/links';
+import { aiConfigured } from '@/lib/ai.server';
+import { AskCourse } from '@/components/screens/courses/AskCourse';
 import { Loading } from '@/components/Loading';
 import { CourseShell } from '@/components/screens/courses/course-index/CourseShell';
 import { CourseIndex } from '@/components/screens/courses/course-index/CourseIndex';
@@ -14,7 +16,11 @@ type Props = { children: React.ReactNode; params: Promise<{ id: string }> };
 // <Suspense>, so the page itself never waits for it.
 export default function CourseLayout({ children, params }: Props) {
   return (
-    <CourseShell index={<Suspense fallback={<Loading label="Loading…" />}><IndexData params={params} /></Suspense>}>
+    <CourseShell
+      index={<Suspense fallback={<Loading label="Loading…" />}><IndexData params={params} /></Suspense>}
+      // "Ask this course" only shows once the AI service is set up (AI_SERVICE_URL and AI_SERVICE_TOKEN).
+      // <Suspense>: the panel reads the course id from the address, which isn't known when the shell is prerendered.
+      actions={aiConfigured() ? <Suspense fallback={null}><AskCourse /></Suspense> : null}>
       {children}
     </CourseShell>
   );

@@ -11,17 +11,34 @@ Browser ──► Next.js (this app)  ──server only──►  Moodle web ser
 
 The user's Moodle token never reaches the browser. It is stored in an encrypted, httpOnly session cookie, and every Moodle call happens on the server. Moodle still enforces permissions, because each user's token carries their own Moodle rights.
 
+## Why headless?
+
+Moodle is a capable LMS, but its interface serves admins, teachers and learners all at once, so learners get a crowded screen. This project doesn't try to rebuild Moodle. It's **an accessible, AI-assisted learner front end**:
+
+- **Moodle stays the system of record**: users, enrolments, content, completion, grades, and everything teachers and admins do.
+- **This app is only for learners**: calm, fast, keyboard- and screen-reader-friendly, and good on a phone, with features the standard Moodle interface doesn't offer.
+- **What it doesn't need to rebuild, it hands to Moodle**: quizzes, forums and file uploads open in Moodle in a new tab. That's a deliberate choice, not a gap.
+
+| | Built on |
+| --- | --- |
+| **Foundation** (done): secure login, dashboard, courses, activities, completion, course index, *Up next* deadlines, assignment submissions, end-to-end and accessibility tests | Moodle web services |
+| **Ask this course** (done): answers questions from the course's own content, with links to the activities it used | Python service: retrieval (RAG) + Claude |
+| **Weekly plan**: turns deadlines and progress into "your three things this week" | *Up next* + completion data |
+| **Reading support**: simplify or summarise a page, read it aloud, adjust text size and spacing | Activity content + Claude |
+| **Progress report**: a PDF or Excel report for the learner, or for parents and support workers | Python (pandas, reportlab/openpyxl) |
+
 ## What it does
 
 | Screen | Moodle web services |
 | --- | --- |
 | **Log in / log out** | `login/token.php` (service `moodle_mobile_app`), `core_webservice_get_site_info` |
-| **Dashboard**: my courses with progress | `core_enrol_get_users_courses` |
+| **Dashboard**: *Up next* deadlines, my courses with progress | `core_calendar_get_action_events_by_timesort`, `core_enrol_get_users_courses` |
 | **Course page**: sections, activities, progress, *Mark as done* | `core_course_get_courses_by_field`, `core_course_get_contents`, `core_completion_update_activity_completion_status_manually` |
+| **Assignments**: write, save as draft, submit for grading, see grade and feedback | `mod_assign_get_assignments`, `mod_assign_get_submission_status`, `mod_assign_save_submission`, `mod_assign_submit_for_grading` |
 | **Course catalogue**: courses by category | `core_course_get_categories`, `core_course_get_courses_by_field` |
 | **Images** (course images, images in descriptions) | `webservice/pluginfile.php`, through `/api/file` |
 
-Activities open inside the app, at `/courses/<id>/activities/<cmid>`, with Previous / Next links and Mark as done. Pages, URLs and assignment descriptions are shown in the app. Other activity types (quizzes, forums, assignment submission) aren't built yet; their page offers a link that opens Moodle in a **new tab**, so the app stays open. Links to Moodle inside course content (to courses, activities, the dashboard) are rewritten to the app's own pages by `SafeHtml` and `src/lib/links.ts`.
+Activities open inside the app, at `/courses/<id>/activities/<cmid>`, with Previous / Next links and Mark as done. Pages, URLs and assignments (including online text submissions) work in the app. Quizzes, forums and file uploads are left to Moodle on purpose (see *Why headless?*): their page offers a link that opens Moodle in a **new tab**, so the app stays open. Links to Moodle inside course content (to courses, activities, the dashboard) are rewritten to the app's own pages by `SafeHtml` and `src/lib/links.ts`.
 
 ## Set up
 
@@ -59,6 +76,22 @@ npm run lint
 ```
 
 Log in with a Moodle username and password.
+
+## Ask this course
+
+An "Ask this course" button sits next to the course index on every course and activity page. It opens a panel where learners ask questions. Answers come only from that course's content, stream in as they're written, and link to the activities they came from.
+
+```
+Browser ─► /api/courses/[id]/ask (Next.js)       ─► ai-service/ (Python, FastAPI)
+           checks session + enrolment,               search the course's chunks (Chroma),
+           indexes content with the learner's         only activities the learner may see,
+           token, sends the allowed activities        → Claude → streams the answer back
+```
+
+- **Setup:** see `ai-service/README.md`, then add `AI_SERVICE_URL=http://localhost:8000` and `AI_SERVICE_TOKEN=<same as the service>` to `.env.local`. Run `npm run ai` alongside `npm run dev`. The button only shows when both settings are there.
+- **Security:** Moodle tokens and the service token stay on the server. The Python service never talks to Moodle. It indexes what Next.js sends and searches only the activities the learner can see, so restricted content can't end up in an answer.
+- **Without an API key** it runs in demo mode, showing the most relevant course extracts.
+- Code: `src/lib/ai.server.ts` (indexing), `src/app/api/courses/[id]/ask/route.ts` (the secure route), `src/components/screens/courses/AskCourse.tsx` (the panel).
 
 ## Theme and colours
 
@@ -148,13 +181,14 @@ Good next features: grades (`gradereport_user_get_grade_items`), badges (`core_b
 End-to-end tests in `e2e/` use [Playwright](https://playwright.dev): a real browser drives the real app, which talks to a **mock Moodle** (`e2e/mock-moodle.mjs`) instead of yours. The tests are repeatable and never change your Moodle's data.
 
 ```bash
+npm run test:ai                   # the Python service's own tests
 npx playwright install chromium   # once: downloads the test browser
 npm run test:e2e                  # builds the app, starts it and the mock Moodle, runs every test
 npm run test:e2e:ui               # Playwright's UI: pick tests, watch them run, step back through each one
 npx playwright show-report        # the HTML report from the last run
 ```
 
-The app runs on port 3100 and the mock Moodle on 8099, so tests don't clash with `npm run dev` on 3000.
+The app runs on port 3100, the mock Moodle on 8099 and a mock AI service on 8100, so tests don't clash with `npm run dev` on 3000.
 
 What's covered:
 
@@ -166,6 +200,7 @@ What's covered:
 | `assignment.spec.ts` | Empty answer caught; draft saved and kept; statement required to submit; submitted work read-only and off Up next; file uploads go to Moodle; accessibility of draft and submitted states |
 | `course-index.spec.ts` | Sections, completion and current activity; sections open/close; hide/show remembered; hidden index not reachable by keyboard |
 | `up-next.spec.ts` | Deadlines grouped and in order; hidden courses left out; links open in the app; finished activities drop off; dashboard still works if the calendar fails |
+| `ask-course.spec.ts` | Answers with source links; only visible content indexed and searched; honest "not covered"; daily limit; not enrolled; accessibility; the API needs a login (uses `e2e/mock-ai.mjs`) |
 | `mobile.spec.ts` | Phone-sized screen: the course index drawer; no sideways scrolling |
 | `accessibility.spec.ts` | Automated WCAG 2.2 A/AA checks (axe) on every page |
 
