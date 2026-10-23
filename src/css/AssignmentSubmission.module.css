@@ -1,0 +1,20 @@
+.panel { margin-top: 2rem; padding: 1rem; }
+@media (min-width: 600px) {
+  .panel { padding: 1.5rem; }
+}
+
+.header { align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
+.heading { font-size: 1.25rem; }
+
+.message { margin-bottom: 1rem; }
+.grade { font-weight: 600; }
+
+/* What was submitted, set off by a line on the left. */
+.submitted { border-left: 4px solid var(--mui-palette-divider); padding-left: 1rem; }
+
+.gapAbove { margin-top: 1rem; }
+
+.statement { align-items: flex-start; }
+.statement :global(.MuiCheckbox-root) { padding-top: .25rem; }
+
+.buttons { flex-wrap: wrap; row-gap: .5rem; }

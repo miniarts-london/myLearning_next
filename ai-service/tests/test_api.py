@@ -107,3 +107,26 @@ def test_refuses_to_start_without_a_service_token(store):
 
     with pytest.raises(RuntimeError, match="AI_SERVICE_TOKEN"):
         create_app(settings(service_token=""), store=store)
+
+
+def search(client, query, allowed=(0, 11, 13, 21), limit=5):
+    return client.post("/courses/2/search", headers=AUTH, json={"query": query, "allowed_cmids": list(allowed), "limit": limit})
+
+
+def test_search_returns_matching_chunks_without_calling_claude(client, answerer):
+    response = search(client, "What contrast ratio does normal text need?")
+    assert response.status_code == 200
+    results = response.json()["results"]
+    assert results[0]["cmid"] == 21
+    assert results[0]["href"] == "/courses/2/activities/21"
+    assert "4.5:1" in results[0]["text"]
+    assert 0 < results[0]["similarity"] <= 1
+    assert answerer.calls == []  # Search only: no answer written, no cost
+
+
+def test_search_respects_allowed_activities_and_auth(client):
+    results = search(client, "secret exam answer contrast", allowed=(11, 13, 21)).json()["results"]
+    assert all(r["cmid"] != 99 for r in results)
+    assert client.post("/courses/2/search", json={"query": "q", "allowed_cmids": [11]}).status_code == 401
+    assert search(client, "   ").status_code == 400
+    assert search(client, "contrast", limit=50).status_code == 422  # At most 10 results

@@ -1,14 +1,11 @@
 import Box from '@mui/material/Box';
-import LinearProgress from '@mui/material/LinearProgress';
-import Typography from '@mui/material/Typography';
+import { CircularProgressWithLabel, type RingColor } from './CircularProgressWithLabel';
+import styles from '@/css/ProgressBar.module.css';
 
-export function ProgressBar({ value, label }: { value: number; label: string }) {
-  const rounded = Math.round(value);
+export function ProgressBar({ value, label, size, color }: { value: number; label: string; size?: number; color?: RingColor }) {
   return (
-    <Box sx={{ display: 'grid', gap: 0.5, my: 2 }}>
-      {/* LinearProgress sets role="progressbar" and aria-valuenow itself. */}
-      <LinearProgress variant="determinate" value={rounded} color="success" aria-label={label} />
-      <Typography variant="body2" sx={{ color: 'text.secondary' }}>{rounded}% complete</Typography>
+    <Box className={styles.wrap}>
+      <CircularProgressWithLabel value={value} label={label} size={size} color={color} />
     </Box>
   );
 }

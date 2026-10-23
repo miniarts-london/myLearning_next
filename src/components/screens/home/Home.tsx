@@ -5,6 +5,7 @@ import { CourseCard } from '@/components/CourseCard';
 import { CourseGrid } from '@/components/CourseGrid';
 import { SectionTitle } from '@/components/SectionTitle';
 import type { EnrolledCourse } from '@/lib/types';
+import common from '@/css/common.module.css';
 
 interface HomeScreenProps {
   firstname: string;
@@ -14,7 +15,7 @@ interface HomeScreenProps {
 export function HomeScreen({ firstname, courses }: HomeScreenProps) {
   return (
     <>
-      <Typography variant="h1" sx={{ mb: 3 }}>Welcome back, {firstname}</Typography>
+      <Typography variant="h1" className={common.pageTitle}>Welcome back, {firstname}</Typography>
       
     </>
   );

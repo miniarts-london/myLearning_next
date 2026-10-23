@@ -1,0 +1,25 @@
+.fab { position: fixed; right: 16px; bottom: 16px; z-index: 1100; }
+@media (min-width: 600px) {
+  .fab { right: 24px; bottom: 24px; }
+}
+.fabIcon { margin-right: .5rem; }
+
+.paper { width: min(460px, 100vw); display: flex; }
+
+.header { align-items: center; justify-content: space-between; padding: 1rem 1.25rem 0; }
+.title { font-size: 1.25rem; }
+.intro { padding: 0 1.25rem .75rem; color: var(--mui-palette-text-secondary); }
+
+.messages { flex: 1; overflow-y: auto; padding: .5rem 1.25rem; border-top: 1px solid var(--mui-palette-divider); }
+.suggestions { margin-top: 1rem; align-items: flex-start; }
+
+.turn { margin: 1rem 0; }
+.question { font-weight: 600; background: var(--mui-palette-grey-100); padding: .5rem .75rem; margin-bottom: .5rem; }
+.error { margin-top: .5rem; }
+
+.form { padding: 1rem; border-top: 1px solid var(--mui-palette-divider); }
+.formFooter { margin-top: .5rem; align-items: center; justify-content: space-between; }
+
+/* One lookup the assistant made, e.g. "Checking your deadlines". */
+.step { align-items: center; color: var(--mui-palette-text-secondary); margin: .25rem 0; }
+.stepError { color: var(--mui-palette-error-main); }

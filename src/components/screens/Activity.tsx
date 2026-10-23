@@ -14,6 +14,8 @@ import { activityHref } from '@/lib/links';
 import { AssignmentSubmission } from '@/components/AssignmentSubmission';
 import type { AssignmentView } from '@/lib/assignment';
 import type { Course, CourseModule } from '@/lib/types';
+import styles from '@/css/Activity.module.css';
+import common from '@/css/common.module.css';
 
 // What the page fetched for this activity, depending on its type.
 export type ActivityDetail =
@@ -33,28 +35,26 @@ interface ActivityScreenProps {
 export function ActivityScreen({ course, activity, detail, prev, next }: ActivityScreenProps) {
   return (
     <>
-      <Breadcrumbs sx={{ mb: 1, fontSize: '.875rem' }}>
+      <Breadcrumbs className={common.breadcrumbs}>
         <Link href="/dashboard">Dashboard</Link>
         <Link href={`/courses/${course.id}`}>{course.fullname}</Link>
       </Breadcrumbs>
-      <Typography variant="h1" sx={{ mb: 3 }}>{activity.name}</Typography>
+      <Typography variant="h1" className={common.pageTitle}>{activity.name}</Typography>
 
-      <Box component="article" sx={{ maxWidth: '45rem', my: 3 }}>
+      <Box component="article" className={styles.article}>
         <ActivityBody detail={detail} courseid={course.id} />
       </Box>
 
-      <Box sx={{ my: 3, '&:empty': { display: 'none' } }}>
+      <Box className={styles.completion}>
         <CompletionButton module={activity} courseid={course.id} />
       </Box>
 
-      <Divider sx={{ mt: 4, mb: 2.5 }} />
-      <Box component="nav" aria-label="Activities in this course"
-        sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', sm: '1fr auto 1fr' }, gap: 2, alignItems: 'start' }}>
+      <Divider className={styles.divider} />
+      <Box component="nav" aria-label="Activities in this course" className={styles.pager}>
         {prev ? (
           <PagerLink href={activityHref(course.id, prev.id)} rel="prev" label="Previous" name={prev.name} />
         ) : <span />}
-        <Link href={`/courses/${course.id}`}
-          sx={{ alignSelf: 'center', justifySelf: 'center', gridRow: { xs: 2, sm: 'auto' }, gridColumn: { xs: '1 / -1', sm: 'auto' } }}>
+        <Link href={`/courses/${course.id}`} className={styles.back}>
           Back to course
         </Link>
         {next ? (
@@ -70,10 +70,10 @@ function PagerLink({ href, rel, label, name }: { href: string; rel: 'prev' | 'ne
   return (
     <Button href={href} rel={rel} color="secondary"
       startIcon={isNext ? undefined : <ArrowBackIcon />} endIcon={isNext ? <ArrowForwardIcon /> : undefined}
-      sx={{ justifySelf: isNext ? 'end' : 'start', textTransform: 'none', textAlign: isNext ? 'right' : 'left', px: 1 }}>
-      <Box component="span" sx={{ display: 'grid' }}>
-        <Typography component="span" variant="overline" sx={{ color: 'text.secondary' }}>{label}</Typography>
-        <Typography component="span" sx={{ fontWeight: 600 }}>{name}</Typography>
+      className={`${styles.pagerLink} ${isNext ? styles.next : styles.prev}`}>
+      <Box component="span" className={styles.pagerText}>
+        <Typography component="span" variant="overline" className={styles.pagerLabel}>{label}</Typography>
+        <Typography component="span" className={styles.pagerName}>{name}</Typography>
       </Box>
     </Button>
   );
@@ -102,7 +102,7 @@ function ActivityBody({ detail, courseid }: { detail: ActivityDetail; courseid: 
       return (
         <>
           {detail.duedate > 0 && (
-            <Alert severity="warning" icon={false} sx={{ mb: 2, fontWeight: 600 }}>
+            <Alert severity="warning" icon={false} className={styles.due}>
               Due{' '}
               <time dateTime={new Date(detail.duedate * 1000).toISOString()}>
                 {new Date(detail.duedate * 1000).toLocaleString('en-GB', { dateStyle: 'full', timeStyle: 'short', timeZone: 'Europe/London' })}
@@ -115,7 +115,7 @@ function ActivityBody({ detail, courseid }: { detail: ActivityDetail; courseid: 
               submittedText={<SafeHtml html={detail.submission.html} className="prose" />}
               feedback={detail.submission.feedbackHtml && <SafeHtml html={detail.submission.feedbackHtml} className="prose" />} />
           ) : (
-            <Alert severity="warning" sx={{ mt: 2 }} action={<MoodleButton href={detail.moodleUrl}>Open in Moodle</MoodleButton>}>
+            <Alert severity="warning" className={styles.alertGap} action={<MoodleButton href={detail.moodleUrl}>Open in Moodle</MoodleButton>}>
               Your submission couldn&apos;t be loaded.
             </Alert>
           )}

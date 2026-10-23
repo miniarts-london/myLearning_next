@@ -2,17 +2,18 @@ import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
 import { LoginForm } from '@/app/login/LoginForm';
+import styles from '@/css/Login.module.css';
 
 export function LoginScreen() {
   return (
-    <Box component="main" sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', bgcolor: 'grey.100', px: 2, py: 4 }}>
-      <Paper component="section" aria-labelledby="login-title" elevation={0} sx={{ width: '100%', maxWidth: '26rem', p: { xs: 3, sm: 5 } }}>
-        <Typography id="login-title" variant="h1" sx={{ mb: 4 }}>
-          <Typography component="span" sx={{ display: 'block', color: 'text.primary' }}>Welcome to</Typography>
+    <Box component="main" className={styles.page}>
+      <Paper component="section" aria-labelledby="login-title" elevation={0} className={styles.card}>
+        <Typography id="login-title" variant="h1" className={styles.title}>
+          <Typography component="span" className={styles.welcome}>Welcome to</Typography>
           MyLearning
         </Typography>
         <LoginForm />
-        <Typography variant="body2" sx={{ mt: 2, color: 'text.secondary' }}>
+        <Typography variant="body2" className={styles.hint}>
           Use your Moodle username and password.
         </Typography>
       </Paper>

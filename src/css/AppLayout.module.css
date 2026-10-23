@@ -1,0 +1,14 @@
+.toolbar { min-height: 72px; flex-wrap: wrap; column-gap: 1.5rem; row-gap: .5rem; padding: .75rem 0; }
+@media (min-width: 600px) {
+  .toolbar { column-gap: 2rem; padding-top: 0; padding-bottom: 0; }
+}
+
+.brand { font-size: 1.375rem; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; color: var(--mui-palette-text-primary); }
+.brandLight { font-weight: 300; }
+
+.user { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+@media (min-width: 600px) {
+  .user { margin-left: auto; width: auto; }
+}
+
+.main { padding-top: 2.5rem; padding-bottom: 6rem; }

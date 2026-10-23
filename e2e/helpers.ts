@@ -2,11 +2,13 @@ import { expect, type APIRequestContext, type Page } from '@playwright/test';
 
 export const MOODLE = 'http://localhost:8099';
 export const AI = 'http://localhost:8100';
+export const CLAUDE = 'http://localhost:8101';
 
 // Put the mock Moodle's completion data back to the start, so each test begins the same way.
 export async function resetMoodle(request: APIRequestContext) {
   await request.post(`${MOODLE}/__reset`);
   await request.post(`${AI}/__reset`);
+  await request.post(`${CLAUDE}/__reset`);
 }
 
 export async function login(page: Page, username = 'student', password = 'secret') {

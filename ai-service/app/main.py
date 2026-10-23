@@ -36,6 +36,12 @@ class DocumentsIn(BaseModel):
     documents: list[DocumentIn]
 
 
+class SearchIn(BaseModel):
+    query: str
+    allowed_cmids: list[int]
+    limit: int = Field(default=5, ge=1, le=10)
+
+
 class AskIn(BaseModel):
     question: str
     user_id: str
@@ -71,6 +77,23 @@ def create_app(settings: Settings | None = None, store: CourseStore | None = Non
     def replace_documents(course_id: int, body: DocumentsIn) -> dict:
         chunks = store.replace_course(course_id, [Document(**d.model_dump()) for d in body.documents])
         return {"chunks": chunks}
+
+    @app.post("/courses/{course_id}/search", dependencies=[Depends(require_token)])
+    def search(course_id: int, body: SearchIn) -> dict:
+        """Just the search, no answer: the assistant agent in the Next.js app calls this as one of
+        its tools and writes the answer itself. Only activities in `allowed_cmids` are searched."""
+        query = body.query.strip()
+        if not query:
+            raise HTTPException(status_code=400, detail="Empty search.")
+        found = store.search(course_id, query[:MAX_QUESTION_CHARS], body.allowed_cmids, k=body.limit)
+        hits = [h for h in found if h.similarity >= settings.min_similarity]
+        log.warning("course %s search: %d of %d chunks used; best similarity %s", course_id, len(hits), len(found),
+                    f"{found[0].similarity:.2f}" if found else "n/a")
+        return {"results": [
+            {"cmid": h.cmid, "title": h.title, "section": h.section, "href": h.href,
+             "text": h.text, "similarity": round(h.similarity, 3)}
+            for h in hits
+        ]}
 
     @app.post("/courses/{course_id}/ask", dependencies=[Depends(require_token)])
     async def ask(course_id: int, body: AskIn) -> StreamingResponse:

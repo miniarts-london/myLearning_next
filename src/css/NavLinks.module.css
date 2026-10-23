@@ -1,0 +1,23 @@
+.list { list-style: none; margin: 0; padding: 0; display: flex; gap: 1.25rem; }
+@media (min-width: 600px) {
+  .list { gap: 1.5rem; }
+}
+
+.link { padding-left: 0; padding-right: 0; min-width: 0; font-size: .8125rem; font-weight: 600; border-radius: 0; }
+.link:hover { background: transparent; }
+
+/* The underline grows in on hover and stays on the current page. */
+.link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: var(--mui-palette-primary-main);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform .25s;
+}
+.link:hover::after,
+.link[aria-current="page"]::after { transform: scaleX(1); }

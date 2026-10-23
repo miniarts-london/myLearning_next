@@ -5,6 +5,7 @@ import { CourseGrid } from '@/components/CourseGrid';
 import { SafeHtml } from '@/components/SafeHtml';
 import { SectionTitle } from '@/components/SectionTitle';
 import type { Category, Course } from '@/lib/types';
+import common from '@/css/common.module.css';
 
 export interface CatalogueCategory {
   category: Category;
@@ -18,7 +19,7 @@ interface CatalogueScreenProps {
 export function CatalogueScreen({ categories }: CatalogueScreenProps) {
   return (
     <>
-      <Typography variant="h1" sx={{ mb: 3 }}>Courses</Typography>
+      <Typography variant="h1" className={common.pageTitle}>Courses</Typography>
       {categories.map(({ category, courses }) => (
         <section key={category.id} aria-labelledby={`cat-${category.id}`}>
           <SectionTitle id={`cat-${category.id}`}>{category.name}</SectionTitle>

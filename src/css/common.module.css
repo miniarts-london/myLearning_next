@@ -1,0 +1,13 @@
+/* Shared by several screens. */
+.pageTitle { margin-bottom: 1.5rem; }
+
+.breadcrumbs { margin-bottom: .5rem; font-size: .875rem; }
+.breadcrumbCurrent { font-size: inherit; color: var(--mui-palette-text-secondary); }
+
+/* The small "opens in a new tab" arrow after a link. */
+.externalIcon { margin-left: .25rem; vertical-align: middle; }
+
+.muted { color: var(--mui-palette-text-secondary); }
+
+/* The soft shadow used on panels and activity rows. */
+.softShadow { box-shadow: 0 0 1.25rem rgba(0, 0, 0, .06); }

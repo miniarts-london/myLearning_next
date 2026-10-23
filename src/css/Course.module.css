@@ -1,0 +1,17 @@
+.intro { margin-bottom: 1.5rem; }
+.notEnrolled { margin-top: 1rem; }
+
+.activities { display: grid; gap: .5rem; }
+
+.activity { background: var(--mui-palette-background-paper); }
+.complete { background: rgba(63, 112, 32, .07); }
+
+.activityRow { padding-top: .75rem; padding-bottom: .75rem; gap: 1rem; flex-wrap: wrap; }
+@media (min-width: 600px) {
+  .activityRow { flex-wrap: nowrap; }
+}
+
+.activityIcon { min-width: 0; }
+.grow { flex: 1; }
+.activityText { flex: 1; margin: 0; }
+.activityLink { font-weight: 600; }

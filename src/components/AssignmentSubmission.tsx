@@ -20,6 +20,8 @@ import SendIcon from '@mui/icons-material/Send';
 import { saveSubmission, type SubmissionState } from '@/actions/assignment';
 import { STATUS_LABEL, type AssignmentView } from '@/lib/assignment';
 import { fileUrl } from '@/lib/files';
+import styles from '@/css/AssignmentSubmission.module.css';
+import common from '@/css/common.module.css';
 
 // The learner's side of an assignment: status, their online text, and Save / Submit.
 // File uploads still happen in Moodle (they need Moodle's separate upload endpoint).
@@ -47,21 +49,20 @@ export function AssignmentSubmission({ view, courseid, moodleUrl, submittedText,
   const statusColour = submitted ? 'success' : view.status === 'draft' ? 'warning' : 'default';
 
   return (
-    <Paper component="section" aria-labelledby="your-submission" elevation={0}
-      sx={{ mt: 4, p: { xs: 2, sm: 3 }, boxShadow: '0 0 1.25rem rgba(0, 0, 0, .06)' }}>
-      <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-        <Typography id="your-submission" variant="h2" sx={{ fontSize: '1.25rem' }}>Your submission</Typography>
+    <Paper component="section" aria-labelledby="your-submission" elevation={0} className={`${styles.panel} ${common.softShadow}`}>
+      <Stack direction="row" className={styles.header}>
+        <Typography id="your-submission" variant="h2" className={styles.heading}>Your submission</Typography>
         <Chip label={STATUS_LABEL[view.status]} color={statusColour} variant={submitted ? 'filled' : 'outlined'} size="small" />
       </Stack>
 
       {/* Announced to screen readers when it changes. */}
       <div role="status">
-        {state.message && <Alert severity={state.ok ? 'success' : 'error'} sx={{ mb: 2 }}>{state.message}</Alert>}
+        {state.message && <Alert severity={state.ok ? 'success' : 'error'} className={styles.message}>{state.message}</Alert>}
       </div>
 
       {view.grade && (
-        <Alert severity="info" icon={false} sx={{ mb: 2 }}>
-          <Typography component="p" sx={{ fontWeight: 600 }}>Grade: {view.grade}</Typography>
+        <Alert severity="info" icon={false} className={styles.message}>
+          <Typography component="p" className={styles.grade}>Grade: {view.grade}</Typography>
           {feedback}
         </Alert>
       )}
@@ -77,25 +78,25 @@ export function AssignmentSubmission({ view, courseid, moodleUrl, submittedText,
       ) : (
         <>
           {view.html ? (
-            <Box sx={{ borderLeft: 4, borderColor: 'divider', pl: 2 }}>
+            <Box className={styles.submitted}>
               {submittedText}
             </Box>
           ) : (
-            <Typography sx={{ color: 'text.secondary' }}>Nothing submitted.</Typography>
+            <Typography className={common.muted}>Nothing submitted.</Typography>
           )}
           {submitted && view.canEdit && (
-            <Button onClick={() => setEditing(true)} startIcon={<EditIcon />} color="secondary" variant="outlined" sx={{ mt: 2 }}>
+            <Button onClick={() => setEditing(true)} startIcon={<EditIcon />} color="secondary" variant="outlined" className={styles.gapAbove}>
               Edit submission
             </Button>
           )}
           {!view.canEdit && !submitted && (
-            <Alert severity="warning" sx={{ mt: 2 }}>Submissions are closed for this assignment.</Alert>
+            <Alert severity="warning" className={styles.gapAbove}>Submissions are closed for this assignment.</Alert>
           )}
         </>
       )}
 
       {view.lastModified && (
-        <Typography variant="body2" sx={{ color: 'text.secondary', mt: 2 }}>
+        <Typography variant="body2" className={`${common.muted} ${styles.gapAbove}`}>
           Last changed{' '}
           <time dateTime={new Date(view.lastModified * 1000).toISOString()}>
             {new Date(view.lastModified * 1000).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/London' })}
@@ -104,7 +105,7 @@ export function AssignmentSubmission({ view, courseid, moodleUrl, submittedText,
       )}
 
       {view.onlineTextEnabled && view.filesEnabled && (
-        <Box sx={{ mt: 2 }}>
+        <Box className={styles.gapAbove}>
           {view.files.length > 0 && (
             <List dense disablePadding aria-label="Files you've submitted">
               {view.files.map((f) => (
@@ -112,7 +113,7 @@ export function AssignmentSubmission({ view, courseid, moodleUrl, submittedText,
               ))}
             </List>
           )}
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+          <Typography variant="body2" className={common.muted}>
             This assignment also accepts files. <MoodleLink href={moodleUrl}>Add files in Moodle</MoodleLink>
           </Typography>
         </Box>
@@ -138,9 +139,9 @@ function SubmissionForm({ view, courseid, action, pending, initialText, onCancel
         variant="outlined" helperText="Leave a blank line between paragraphs." />
       {view.usesDrafts && view.statement && (
         <FormControlLabel control={<Checkbox name="statement" />} label={view.statement}
-          sx={{ alignItems: 'flex-start', '& .MuiCheckbox-root': { pt: 0.5 } }} />
+          className={styles.statement} />
       )}
-      <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
+      <Stack direction="row" spacing={2} className={styles.buttons}>
         {view.usesDrafts ? (
           <>
             <Button type="submit" name="intent" value="submit" variant="contained" endIcon={<SendIcon />} loading={pending}>
@@ -156,7 +157,7 @@ function SubmissionForm({ view, courseid, action, pending, initialText, onCancel
         {onCancel && <Button onClick={onCancel} color="secondary" disabled={pending}>Cancel</Button>}
       </Stack>
       {view.usesDrafts && (
-        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+        <Typography variant="body2" className={common.muted}>
           A draft is only for you. Your teacher sees your work once you submit it for grading, and you usually can&apos;t change it after that.
         </Typography>
       )}
@@ -176,7 +177,7 @@ function MoodleLink({ href, children }: { href: string; children: React.ReactNod
   return (
     <Link component="a" href={href} target="_blank" rel="noopener noreferrer">
       {children}<span className="visually-hidden"> (opens Moodle in a new tab)</span>
-      <OpenInNewIcon fontSize="inherit" sx={{ ml: 0.5, verticalAlign: 'middle' }} />
+      <OpenInNewIcon fontSize="inherit" className={common.externalIcon} />
     </Link>
   );
 }

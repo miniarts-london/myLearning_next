@@ -44,7 +44,11 @@ export async function GET(request: NextRequest) {
   }
 
   const type = (file.headers.get('Content-Type') ?? '').split(';')[0].trim().toLowerCase();
-  const inline = INLINE_TYPES.has(type);
+  // The one SVG shown in the page: the patterned placeholder Moodle itself makes for a course with
+  // no image (course/generated/). Uploaded SVGs are still downloads. Even if someone opened this
+  // address directly, the sandbox policy below stops any script in it from running.
+  const generatedCourseImage = type === 'image/svg+xml' && /\/course\/generated\//.test(url.pathname);
+  const inline = INLINE_TYPES.has(type) || generatedCourseImage;
   let name = url.pathname.split('/').pop() || 'file';
   try {
     name = decodeURIComponent(name);

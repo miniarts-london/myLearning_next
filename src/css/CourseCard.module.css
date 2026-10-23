@@ -1,0 +1,21 @@
+/* Fills its grid cell, so cards in a row are the same height. */
+.card { height: 100%; display: flex; flex-direction: column; transition: transform .25s, box-shadow .25s; }
+.card:hover,
+.card:focus-within { transform: translateY(-.25rem); box-shadow: 0 1rem 2rem rgba(0, 0, 0, .12); }
+
+.image { aspect-ratio: 16 / 9; object-fit: cover; background: var(--mui-palette-grey-100); }
+
+/* With an image, the title sits over its bottom edge on a translucent white band. */
+.titleOverImage {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  background: #ffffffc7;
+  padding: 1rem;
+}
+/* Without an image: the card's normal padding, tighter above the progress ring. */
+.title { padding-bottom: 1rem; }
+.titleAboveProgress { padding-bottom: 0; }
+
+/* The ring sits in the middle of the space under the title, with even space above and below. */
+.progress { flex: 1; display: flex; align-items: center; justify-content: center; padding: 0 1rem; }

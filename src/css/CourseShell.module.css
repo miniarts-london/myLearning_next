@@ -1,0 +1,73 @@
+/* The course index width, and how long it takes to open or close. Change them here only. */
+.shell,
+.drawerPaper {
+  --index-width: 300px;
+  --index-speed: 400ms;
+}
+
+.shell { display: flex; align-items: flex-start; }
+
+/* Wide screens. Opening and closing animate: the column slides its width (and the gap beside it)
+   between 0 and full, while the panel inside slides and fades. `visibility` waits until the closing
+   slide has finished, then hides the panel, so its links can't be tabbed to while it's closed. */
+.column { display: none; }
+@media (min-width: 900px) {
+  .column {
+    display: block;
+    flex-shrink: 0;
+    position: sticky;
+    top: 16px;
+    overflow: hidden;
+    width: var(--index-width);
+    margin-right: 2rem;
+    visibility: visible;
+    transition:
+      width var(--index-speed) cubic-bezier(0.4, 0, 0.2, 1),
+      margin-right var(--index-speed) cubic-bezier(0.4, 0, 0.2, 1),
+      visibility 0s;
+  }
+  .column.closed {
+    width: 0;
+    margin-right: 0;
+    visibility: hidden;
+    transition:
+      width var(--index-speed) cubic-bezier(0.4, 0, 0.2, 1),
+      margin-right var(--index-speed) cubic-bezier(0.4, 0, 0.2, 1),
+      visibility 0s var(--index-speed);
+  }
+}
+
+.panel {
+  width: var(--index-width);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  background: var(--mui-palette-background-paper);
+  box-shadow: 0 0 1.25rem rgba(0, 0, 0, .06);
+  padding-bottom: .5rem;
+  transition:
+    opacity var(--index-speed) cubic-bezier(0.4, 0, 0.2, 1),
+    transform var(--index-speed) cubic-bezier(0.4, 0, 0.2, 1);
+}
+.closed .panel { opacity: 0; transform: translateX(-1.5rem); }
+
+/* Phones: a drawer that slides in over the page. */
+@media (min-width: 900px) {
+  .drawer { display: none; }
+}
+.drawerPaper { width: min(var(--index-width), 85vw); }
+.drawerClose { display: flex; justify-content: flex-end; padding: .25rem; }
+
+.content { flex: 1; min-width: 0; }
+.toolbar { display: flex; flex-wrap: wrap; column-gap: 1rem; align-items: center; }
+
+/* The toggle button's label: "Course index" on phones; "Hide course index" or "Course index" on
+   wide screens, depending on whether the index is open. */
+.toggle { margin-bottom: 1rem; margin-left: -.5rem; }
+.labelOpen { display: none; }
+.labelClosed { display: inline; }
+@media (min-width: 900px) {
+  .labelOpen { display: inline; }
+  .labelClosed { display: none; }
+  .toggleClosed .labelOpen { display: none; }
+  .toggleClosed .labelClosed { display: inline; }
+}

@@ -1,0 +1,2 @@
+/* The ring, centred in whatever holds it (e.g. the course card). */
+.wrap { margin: 1rem 0; display: flex; justify-content: center; }

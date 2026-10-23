@@ -15,6 +15,9 @@ import { CompletionButton } from '@/components/CompletionButton';
 import { SectionTitle } from '@/components/SectionTitle';
 import { activityHref } from '@/lib/links';
 import type { Course, CourseModule, CourseSection } from '@/lib/types';
+import { Grid } from '@mui/material';
+import styles from '@/css/Course.module.css';
+import common from '@/css/common.module.css';
 
 interface CourseScreenProps {
   course: Course;
@@ -26,29 +29,32 @@ interface CourseScreenProps {
 export function CourseScreen({ course, sections, progress, moodleCourseUrl }: CourseScreenProps) {
   return (
     <>
-      <Breadcrumbs sx={{ mb: 1, fontSize: '.875rem' }}>
+      <Breadcrumbs className={common.breadcrumbs}>
         <Link href="/dashboard">Dashboard</Link>
-        <Typography sx={{ fontSize: 'inherit', color: 'text.secondary' }}>{course.categoryname}</Typography>
+        <Typography className={common.breadcrumbCurrent}>{course.categoryname}</Typography>
       </Breadcrumbs>
-      <Typography variant="h1" sx={{ mb: 3 }}>{course.fullname}</Typography>
-      <SafeHtml html={course.summary} className="summary" />
-
+      <Typography variant="h1" className={common.pageTitle}>{course.fullname}</Typography>
+      
+      <Grid container spacing={2} className={styles.intro}>
+        <SafeHtml html={course.summary} className="summary" />
+        {progress !== null && <ProgressBar value={progress} label="Course progress" />}
+      </Grid>
       {sections === null ? (
-        <Alert severity="info" sx={{ mt: 2 }}>
+        <Alert severity="info" className={styles.notEnrolled}>
           You aren&apos;t enrolled in this course.{' '}
           <Link component="a" href={moodleCourseUrl} target="_blank" rel="noopener noreferrer">
             Open it in Moodle<span className="visually-hidden"> (opens in a new tab)</span>
-            <OpenInNewIcon fontSize="inherit" sx={{ ml: 0.5, verticalAlign: 'middle' }} />
+            <OpenInNewIcon fontSize="inherit" className={common.externalIcon} />
           </Link>{' '}to enrol.
         </Alert>
       ) : (
         <>
-          {progress !== null && <ProgressBar value={progress} label="Course progress" />}
+          {/* {progress !== null && <ProgressBar value={progress} label="Course progress" />} */}
           {sections.map((section) => (
             <section key={section.id} aria-labelledby={`section-${section.id}`}>
               <SectionTitle id={`section-${section.id}`}>{section.name}</SectionTitle>
               <SafeHtml html={section.summary} className="summary" />
-              <List disablePadding sx={{ display: 'grid', gap: 1 }}>
+              <List disablePadding className={styles.activities}>
                 {section.modules.map((m) => (
                   <Activity key={m.id} module={m} courseid={course.id} />
                 ))}
@@ -65,23 +71,22 @@ function Activity({ module: m, courseid }: { module: CourseModule; courseid: num
   const complete = (m.completiondata?.state ?? 0) > 0;
   const isLabel = m.modname === 'label';
   return (
-    <Paper component="li" elevation={0}
-      sx={{ boxShadow: '0 0 1.25rem rgba(0, 0, 0, .06)', bgcolor: complete ? 'rgba(63, 112, 32, .07)' : 'background.paper' }}>
-      <ListItem component="div" sx={{ py: 1.5, gap: 2, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
+    <Paper component="li" elevation={0} className={`${styles.activity} ${common.softShadow} ${complete ? styles.complete : ''}`}>
+      <ListItem component="div" className={styles.activityRow}>
         {!isLabel && (
-          <ListItemIcon sx={{ minWidth: 0 }}>
+          <ListItemIcon className={styles.activityIcon}>
             {/* eslint-disable-next-line @next/next/no-img-element -- Moodle's activity icon. */}
             <img src={m.modicon} alt="" width={24} height={24} />
           </ListItemIcon>
         )}
         {isLabel && m.description ? (
-          <Box sx={{ flex: 1 }}><SafeHtml html={m.description} className="activity__label" /></Box>
+          <Box className={styles.grow}><SafeHtml html={m.description} className="activity__label" /></Box>
         ) : (
           <ListItemText
-            sx={{ flex: 1, m: 0 }}
+            className={styles.activityText}
             primary={m.url ? (
               // Activities open inside this app; types it can't show yet offer a link to Moodle from there.
-              <Link href={activityHref(courseid, m.id)} sx={{ fontWeight: 600 }}>{m.name}</Link>
+              <Link href={activityHref(courseid, m.id)} className={styles.activityLink}>{m.name}</Link>
             ) : m.name}
             secondary={isLabel ? undefined : m.modname}
             slotProps={{ secondary: { variant: 'overline' } }}

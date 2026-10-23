@@ -22,7 +22,7 @@ Moodle is a capable LMS, but its interface serves admins, teachers and learners 
 | | Built on |
 | --- | --- |
 | **Foundation** (done): secure login, dashboard, courses, activities, completion, course index, *Up next* deadlines, assignment submissions, end-to-end and accessibility tests | Moodle web services |
-| **Ask this course** (done): answers questions from the course's own content, with links to the activities it used | Python service: retrieval (RAG) + Claude |
+| **Assistant** (done): an agent on every page that looks up deadlines, progress and course content to answer questions, with links | Claude with tools; course search via the Python service (RAG) |
 | **Weekly plan**: turns deadlines and progress into "your three things this week" | *Up next* + completion data |
 | **Reading support**: simplify or summarise a page, read it aloud, adjust text size and spacing | Activity content + Claude |
 | **Progress report**: a PDF or Excel report for the learner, or for parents and support workers | Python (pandas, reportlab/openpyxl) |
@@ -77,21 +77,23 @@ npm run lint
 
 Log in with a Moodle username and password.
 
-## Ask this course
+## Assistant
 
-An "Ask this course" button sits next to the course index on every course and activity page. It opens a panel where learners ask questions. Answers come only from that course's content, stream in as they're written, and link to the activities they came from.
+An **Assistant** button sits in the corner of every logged-in page. It's an **agent**: Claude with tools it can call in a loop. For each message it decides what to look up, shows each step as it goes ("Checking your deadlines", "Searching the course for …"), and streams its answer with links into the app. Follow-up questions keep the conversation. On a course page it knows which course "this course" means.
 
 ```
-Browser ─► /api/courses/[id]/ask (Next.js)       ─► ai-service/ (Python, FastAPI)
-           checks session + enrolment,               search the course's chunks (Chroma),
-           indexes content with the learner's         only activities the learner may see,
-           token, sends the allowed activities        → Claude → streams the answer back
+Browser ─► /api/assistant (Next.js) ── agent loop (src/lib/agent/run.ts) ──► Claude
+                 │                         ▲  tool calls ▼  tool results
+                 │                    tools (src/lib/agent/tools.ts), run with the learner's token:
+                 │                    list_my_courses, get_upcoming_deadlines, get_course_overview,
+                 │                    get_activity ──► Moodle      search_course_content ──► ai-service/
 ```
 
-- **Setup:** see `ai-service/README.md`, then add `AI_SERVICE_URL=http://localhost:8000` and `AI_SERVICE_TOKEN=<same as the service>` to `.env.local`. Run `npm run ai` alongside `npm run dev`. The button only shows when both settings are there.
-- **Security:** Moodle tokens and the service token stay on the server. The Python service never talks to Moodle. It indexes what Next.js sends and searches only the activities the learner can see, so restricted content can't end up in an answer.
-- **Without an API key** it runs in demo mode, showing the most relevant course extracts.
-- Code: `src/lib/ai.server.ts` (indexing), `src/app/api/courses/[id]/ask/route.ts` (the secure route), `src/components/screens/courses/AskCourse.tsx` (the panel).
+- **Read-only for now.** Every tool only looks things up. Tools are marked `kind: 'read'` or `'action'`, and the loop refuses `'action'` tools until a confirmation step exists, so adding "mark as done" or "save a draft" later means building that step first.
+- **Security.** The loop runs in Next.js, where the learner's Moodle token already is, so every tool sees exactly what that learner may see, and Moodle enforces it. The route checks the session and that requests come from the app itself. Course text in tool results is marked as material, not instructions, and answer links are only rendered if they point inside the app.
+- **Cost.** At most 6 rounds of tools per message (then it must answer), 30 messages per learner per day (`ASSISTANT_DAILY_LIMIT`, kept in memory), and `claude-haiku-5-5` by default (`ASSISTANT_MODEL`). Also set a spending limit in the Claude Console.
+- **Setup.** Put your Claude API key in `.env.local` as `ANTHROPIC_API_KEY`. The button only appears when it's set. Course search also needs the AI service (`npm run ai`, see `ai-service/README.md`); without it, the other tools still work.
+- **Code.** `src/lib/agent/` (loop, tools, prompt, limits), `src/app/api/assistant/route.ts`, `src/components/assistant/` (the panel, and `AssistantText`, a safe renderer for its answers).
 
 ## Theme and colours
 
@@ -188,7 +190,7 @@ npm run test:e2e:ui               # Playwright's UI: pick tests, watch them run,
 npx playwright show-report        # the HTML report from the last run
 ```
 
-The app runs on port 3100, the mock Moodle on 8099 and a mock AI service on 8100, so tests don't clash with `npm run dev` on 3000.
+The app runs on port 3100, the mock Moodle on 8099 a mock AI service on 8100 and a mock Claude API on 8101, so tests don't clash with `npm run dev` on 3000.
 
 What's covered:
 
@@ -200,7 +202,7 @@ What's covered:
 | `assignment.spec.ts` | Empty answer caught; draft saved and kept; statement required to submit; submitted work read-only and off Up next; file uploads go to Moodle; accessibility of draft and submitted states |
 | `course-index.spec.ts` | Sections, completion and current activity; sections open/close; hide/show remembered; hidden index not reachable by keyboard |
 | `up-next.spec.ts` | Deadlines grouped and in order; hidden courses left out; links open in the app; finished activities drop off; dashboard still works if the calendar fails |
-| `ask-course.spec.ts` | Answers with source links; only visible content indexed and searched; honest "not covered"; daily limit; not enrolled; accessibility; the API needs a login (uses `e2e/mock-ai.mjs`) |
+| `assistant.spec.ts` | On every page; tool steps shown; multi-round tool use; "this course" context; only visible content searched; honest "not covered"; read-only tools; follow-ups; step limit; outside links not rendered; API refuses other sites and logged-out users; accessibility (uses `e2e/mock-anthropic.mjs`, a scripted Claude API) |
 | `mobile.spec.ts` | Phone-sized screen: the course index drawer; no sideways scrolling |
 | `accessibility.spec.ts` | Automated WCAG 2.2 A/AA checks (axe) on every page |
 

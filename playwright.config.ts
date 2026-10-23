@@ -8,6 +8,7 @@ import { defineConfig, devices } from '@playwright/test';
 const APP_PORT = 3100;
 const MOODLE_PORT = 8099;
 const AI_PORT = 8100;
+const ANTHROPIC_PORT = 8101;
 
 export default defineConfig({
   testDir: './e2e',
@@ -45,6 +46,12 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
     },
     {
+      command: 'node e2e/mock-anthropic.mjs',
+      url: `http://localhost:${ANTHROPIC_PORT}/__reset`,
+      env: { MOCK_ANTHROPIC_PORT: String(ANTHROPIC_PORT) },
+      reuseExistingServer: !process.env.CI,
+    },
+    {
       // A production build: closest to what users get, and it doesn't clash with `npm run dev`.
       command: `npm run build && npx next start -p ${APP_PORT}`,
       url: `http://localhost:${APP_PORT}/login`,
@@ -56,6 +63,8 @@ export default defineConfig({
         SESSION_SECRET: 'e2e-tests-only-not-a-real-secret-0123456789',
         AI_SERVICE_URL: `http://localhost:${AI_PORT}`,
         AI_SERVICE_TOKEN: 'e2e-ai-token',
+        ANTHROPIC_API_KEY: 'e2e-not-a-real-key',
+        ANTHROPIC_BASE_URL: `http://localhost:${ANTHROPIC_PORT}`,
       },
     },
   ],

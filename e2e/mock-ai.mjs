@@ -10,7 +10,9 @@ const TOKEN = process.env.MOCK_AI_TOKEN ?? 'e2e-ai-token';
 let courses = new Map(); // course id → documents
 let last = {};
 
-const words = (s) => new Set(s.toLowerCase().match(/[a-z0-9]+/g) ?? []);
+// Common words don't count as a match (the real service matches by meaning instead).
+const FILLER = new Set(['what', 'does', 'this', 'course', 'about', 'tell', 'that', 'with', 'have', 'from', 'your', 'when', 'where', 'which', 'there']);
+const words = (s) => new Set((s.toLowerCase().match(/[a-z0-9]+/g) ?? []).filter((w) => !FILLER.has(w)));
 const strip = (html) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
 http.createServer((req, res) => {
@@ -23,7 +25,7 @@ http.createServer((req, res) => {
     if (url === '/__last') return json(200, last);
     if (req.headers.authorization !== `Bearer ${TOKEN}`) return json(401, { detail: 'Unauthorised' });
 
-    const match = url.match(/^\/courses\/(\d+)\/(index|documents|ask)$/);
+    const match = url.match(/^\/courses\/(\d+)\/(index|documents|ask|search)$/);
     if (!match) return json(404, { detail: 'Not found' });
     const [, id, action] = match;
 
@@ -36,6 +38,17 @@ http.createServer((req, res) => {
       courses.set(id, documents);
       last.documents = documents;
       return json(200, { chunks: documents.length });
+    }
+    if (action === 'search') {
+      const { query, allowed_cmids } = JSON.parse(body);
+      last.search = { query, allowed_cmids };
+      const q = words(query);
+      const results = (courses.get(id) ?? [])
+        .filter((d) => allowed_cmids.includes(d.cmid))
+        .map((d) => ({ d, score: [...words(`${d.title} ${strip(d.html)}`)].filter((w) => q.has(w) && w.length > 3).length }))
+        .filter((h) => h.score > 0).sort((a, b) => b.score - a.score).slice(0, 5)
+        .map(({ d }) => ({ cmid: d.cmid, title: d.title, section: d.section, href: d.href, text: `${d.title}\n${strip(d.html)}`, similarity: 0.6 }));
+      return json(200, { results });
     }
     // ask
     const { question, user_id, allowed_cmids } = JSON.parse(body);

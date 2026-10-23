@@ -48,9 +48,15 @@ const contents = () => [
 const trackedIds = [11, 13, 21, 22];
 const progress = () => Math.round((100 * trackedIds.filter((id) => done.has(id)).length) / trackedIds.length);
 
+// Course images, as Moodle sends them for courses with no uploaded image: older versions inline a
+// generated pattern as a data: SVG; newer ones link to a generated SVG file.
+const PATTERN = '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect width="320" height="180" fill="#aa0766"/><circle cx="160" cy="90" r="60" fill="#fff" opacity=".3"/></svg>';
+const INLINE_IMAGE = `data:image/svg+xml;base64,${Buffer.from(PATTERN).toString('base64')}`;
+const GENERATED_IMAGE = `${BASE}/pluginfile.php/42/course/generated/course.svg`;
+
 const courses = [
-  { id: 2, fullname: 'Accessible Web Design', shortname: 'AWD101', summary: '<p>Build websites everyone can use.</p>', categoryid: 1, categoryname: 'Web Development', visible: 1 },
-  { id: 3, fullname: 'Horse Care Essentials', shortname: 'HORSE101', summary: '<p>Everyday care for horses.</p>', categoryid: 2, categoryname: 'Personal Development', visible: 1 },
+  { id: 2, fullname: 'Accessible Web Design', shortname: 'AWD101', summary: '<p>Build websites everyone can use.</p>', categoryid: 1, categoryname: 'Web Development', visible: 1, courseimage: INLINE_IMAGE },
+  { id: 3, fullname: 'Horse Care Essentials', shortname: 'HORSE101', summary: '<p>Everyday care for horses.</p>', categoryid: 2, categoryname: 'Personal Development', visible: 1, courseimage: GENERATED_IMAGE },
   { id: 4, fullname: 'Secret course', shortname: 'SECRET', summary: '', categoryid: 1, categoryname: 'Web Development', visible: 0 },
 ];
 const categories = [
@@ -87,7 +93,7 @@ function webService(fn, p) {
       return { userid: 5, username: 'student', firstname: 'Sam', fullname: 'Sam Student', sitename: 'Test Moodle', siteurl: BASE };
     case 'core_enrol_get_users_courses':
       return [
-        { id: 2, fullname: 'Accessible Web Design', shortname: 'AWD101', summary: '', category: 1, progress: progress(), visible: 1 },
+        { id: 2, fullname: 'Accessible Web Design', shortname: 'AWD101', summary: '', category: 1, progress: progress(), visible: 1, courseimage: INLINE_IMAGE },
         { id: 4, fullname: 'Secret course', shortname: 'SECRET', summary: '', category: 1, progress: 0, visible: 0 },
       ];
     case 'core_course_get_courses_by_field': {
@@ -176,6 +182,16 @@ http.createServer((req, res) => {
       return p.get('username') === 'student' && p.get('password') === 'secret'
         ? json({ token: TOKEN })
         : json({ error: 'Invalid login, please try again', errorcode: 'invalidlogin' });
+    }
+    // Files: the generated course pattern, and an uploaded SVG (which must never be shown inline).
+    if (url.startsWith('/webservice/pluginfile.php/')) {
+      if (new URL(url, BASE).searchParams.get('token') !== TOKEN) { res.statusCode = 403; return res.end('Forbidden'); }
+      if (url.includes('/course/generated/course.svg') || url.includes('/mod_forum/attachment/evil.svg')) {
+        res.setHeader('Content-Type', 'image/svg+xml');
+        return res.end(url.includes('evil') ? '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>' : PATTERN);
+      }
+      res.statusCode = 404;
+      return res.end('Not found');
     }
     if (url.startsWith('/webservice/rest/server.php')) {
       if (p.get('wstoken') !== TOKEN) return json(exception('invalidtoken', 'Invalid token - token not found'));

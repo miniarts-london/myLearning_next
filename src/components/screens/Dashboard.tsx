@@ -7,6 +7,7 @@ import { SectionTitle } from '@/components/SectionTitle';
 import { UpNext } from '@/components/UpNext';
 import type { EnrolledCourse } from '@/lib/types';
 import type { UpNextItem } from '@/lib/upNext';
+import common from '@/css/common.module.css';
 
 interface DashboardScreenProps {
   firstname: string;
@@ -17,7 +18,7 @@ interface DashboardScreenProps {
 export function DashboardScreen({ firstname, courses, upNext }: DashboardScreenProps) {
   return (
     <>
-      <Typography variant="h1" sx={{ mb: 3 }}>Welcome back, {firstname}</Typography>
+      <Typography variant="h1" className={common.pageTitle}>Welcome back, {firstname}</Typography>
 
       <section aria-labelledby="up-next">
         <SectionTitle id="up-next">Up next</SectionTitle>

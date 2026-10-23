@@ -14,6 +14,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import type { IndexActivity, IndexSection } from './types';
+import styles from '@/css/CourseIndex.module.css';
 
 interface CourseIndexProps {
   courseid: number;
@@ -41,10 +42,10 @@ export function CourseIndex({ courseid, coursename, sections }: CourseIndexProps
 
   return (
     <>
-      <Typography component="p" variant="overline" sx={{ color: 'text.secondary', px: 2, pt: 2 }}>Course index</Typography>
+      <Typography component="p" variant="overline" className={styles.heading}>Course index</Typography>
       <Link href={`/courses/${courseid}`} underline="hover"
         aria-current={pathname === `/courses/${courseid}` ? 'page' : undefined}
-        sx={{ display: 'block', px: 2, pb: 1.5, fontWeight: 600, color: 'text.primary' }}>
+        className={styles.courseLink}>
         {coursename}
       </Link>
       <List component="div" disablePadding dense>
@@ -54,16 +55,11 @@ export function CourseIndex({ courseid, coursename, sections }: CourseIndexProps
           return (
             <div key={section.id}>
               <ListItemButton component="button" onClick={() => toggle(section.id)} aria-expanded={open} aria-controls={listId}
-                sx={{ px: 1, py: 0.75, width: '100%', textAlign: 'left', font: 'inherit' }}>
-                <ListItemIcon sx={{ minWidth: 28, color: 'text.secondary' }}>
-                  {/* One chevron that turns as the section opens and closes. */}
-                  <ExpandMoreIcon fontSize="small"
-                    sx={(theme) => ({
-                      transform: open ? 'rotate(180deg)' : 'none',
-                      transition: theme.transitions.create('transform', { duration: theme.transitions.duration.shorter }),
-                    })} />
+                className={styles.sectionButton}>
+                <ListItemIcon className={styles.chevronBox}>
+                  <ExpandMoreIcon fontSize="small" className={open ? `${styles.chevron} ${styles.chevronOpen}` : styles.chevron} />
                 </ListItemIcon>
-                <ListItemText primary={section.name} slotProps={{ primary: { sx: { fontWeight: 600 } } }} />
+                <ListItemText primary={section.name} slotProps={{ primary: { className: styles.sectionName } }} />
               </ListItemButton>
               <Collapse in={open} timeout="auto">
                 <List id={listId} disablePadding dense>
@@ -84,30 +80,28 @@ function IndexItem({ activity: a, current }: { activity: IndexActivity; current:
   const status = a.completion === 'done' ? 'Done' : a.completion === 'todo' ? 'To do' : undefined;
   const content = (
     <>
-      <ListItemText primary={a.name} slotProps={{ primary: { sx: { fontWeight: current ? 600 : 400 } } }} />
+      <ListItemText primary={a.name} slotProps={{ primary: { className: current ? styles.currentName : undefined } }} />
       {a.completion && (
         // The icon is decorative; the status is in the visually hidden text for screen readers.
-        <ListItemIcon sx={{ minWidth: 0, ml: 1 }}>
+        <ListItemIcon className={styles.status}>
           {a.completion === 'done'
             ? <CheckCircleIcon fontSize="small" color="success" aria-hidden />
-            : <RadioButtonUncheckedIcon fontSize="small" sx={{ color: 'text.disabled' }} aria-hidden />}
+            : <RadioButtonUncheckedIcon fontSize="small" className={styles.todo} aria-hidden />}
           <span className="visually-hidden">{status}</span>
         </ListItemIcon>
       )}
     </>
   );
-  const indent = { pl: 4.5, pr: 1.5, py: 0.5 };
-
   // Each activity is an <li>, so screen readers announce the list and how many items it has.
   return (
     <ListItem disablePadding>
       {a.href ? (
         <ListItemButton href={a.href} selected={current} aria-current={current ? 'page' : undefined}
-          sx={{ ...indent, borderLeft: 4, borderColor: current ? 'primary.main' : 'transparent' }}>
+          className={current ? `${styles.item} ${styles.current}` : styles.item}>
           {content}
         </ListItemButton>
       ) : (
-        <ListItemButton disabled sx={{ ...indent, opacity: '1 !important' }}>{content}</ListItemButton>
+        <ListItemButton disabled className={`${styles.item} ${styles.unlinked}`}>{content}</ListItemButton>
       )}
     </ListItem>
   );

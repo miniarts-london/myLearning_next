@@ -1,5 +1,5 @@
-/* Most styling now lives in MUI: the theme (src/theme.ts) and each component's sx prop.
-   This file keeps only what MUI doesn't cover: the skip link, the focus ring,
+/* Component styles live next to this file as CSS Modules (src/css/<Component>.module.css); colours come from the MUI theme.
+   This file holds the global rules: the skip link, the focus ring,
    and HTML that comes from Moodle (course summaries, pages, labels) via <SafeHtml>. */
 :root {
   /* Colours come from the MUI theme in src/theme.ts: change them there, not here.
@@ -33,5 +33,7 @@ img { max-width: 100%; height: auto; }
 .category__description img { max-width: 72px; }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition-duration: .01ms !important; }
+  /* Delays too: otherwise a delayed step (like hiding the closed course index from the keyboard)
+     would still wait for an animation that no longer happens. */
+  *, *::before, *::after { transition-duration: .01ms !important; transition-delay: 0s !important; }
 }

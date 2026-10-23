@@ -9,11 +9,10 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import CloseIcon from '@mui/icons-material/Close';
 import MenuIcon from '@mui/icons-material/Menu';
 import MenuOpenIcon from '@mui/icons-material/MenuOpen';
+import styles from '@/css/CourseShell.module.css';
 
 const INDEX_ID = 'course-index';
-const WIDTH = 300;
-// How long the sidebar takes to open or close, in milliseconds. Change it here only.
-const SPEED = 400;
+// The index's width and opening speed are in src/css/CourseShell.module.css.
 
 // Whether the index is open on wide screens is remembered in this browser (like Moodle).
 // useSyncExternalStore reads it without a hydration mismatch: the server always renders it open.
@@ -55,63 +54,39 @@ export function CourseShell({ index, actions, children }: { index: React.ReactNo
   };
 
   return (
-    <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
-      {/* Wide screens. Opening and closing animate: the column slides its width (and the gap
-          beside it) between 0 and full, while the panel inside slides and fades.
-          `visibility` waits until the closing slide has finished, then hides the panel, so its
-          links can't be tabbed to while it's closed. */}
+    <Box className={styles.shell}>
+      {/* Wide screens: a sidebar that slides open and closed (see the CSS for how). */}
       <Box id={INDEX_ID} aria-hidden={!desktopOpen || undefined}
-        sx={(theme) => {
-          const slide = theme.transitions.create(['width', 'margin-right'], {
-            duration: SPEED, easing: theme.transitions.easing.easeInOut,
-          });
-          return {
-            display: { xs: 'none', md: 'block' },
-            flexShrink: 0, position: 'sticky', top: 16, overflow: 'hidden',
-            width: desktopOpen ? WIDTH : 0,
-            mr: desktopOpen ? 4 : 0,
-            visibility: desktopOpen ? 'visible' : 'hidden',
-            transition: desktopOpen
-              ? `${slide}, visibility 0s`
-              : `${slide}, visibility 0s ${SPEED}ms`,
-          };
-        }}>
-        <Box component="nav" aria-label="Course index"
-          sx={(theme) => ({
-            width: WIDTH, maxHeight: 'calc(100vh - 32px)', overflowY: 'auto',
-            bgcolor: 'background.paper', boxShadow: '0 0 1.25rem rgba(0, 0, 0, .06)', pb: 1,
-            opacity: desktopOpen ? 1 : 0,
-            transform: desktopOpen ? 'none' : 'translateX(-1.5rem)',
-            transition: theme.transitions.create(['opacity', 'transform'], { duration: SPEED }),
-          })}>
+        className={desktopOpen ? styles.column : `${styles.column} ${styles.closed}`}>
+        <Box component="nav" aria-label="Course index" className={styles.panel}>
           {index}
         </Box>
       </Box>
 
       {/* Phones: closes itself when a link inside is followed. */}
       <Drawer open={mobileOpen} onClose={() => setMobileOpen(false)}
-        sx={{ display: { md: 'none' } }}
-        slotProps={{ paper: { component: 'nav', 'aria-label': 'Course index', sx: { width: `min(${WIDTH}px, 85vw)` } } as object }}
+        className={styles.drawer}
+        slotProps={{ paper: { component: 'nav', 'aria-label': 'Course index', className: styles.drawerPaper } as object }}
         onClick={(e) => {
           if ((e.target as HTMLElement).closest('a')) {
             setMobileOpen(false);
           }
         }}>
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', p: 0.5 }}>
+        <Box className={styles.drawerClose}>
           <IconButton onClick={() => setMobileOpen(false)} aria-label="Close course index"><CloseIcon /></IconButton>
         </Box>
         {index}
       </Drawer>
 
-      <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 2, alignItems: 'center' }}>
+      <Box className={styles.content}>
+        <Box className={styles.toolbar}>
         <Button onClick={toggle} color="secondary" size="small"
           aria-controls={INDEX_ID}
           aria-expanded={isDesktop ? desktopOpen : mobileOpen}
           startIcon={desktopOpen ? <MenuOpenIcon /> : <MenuIcon />}
-          sx={{ mb: 2, ml: -1, '& .label-open': { display: { xs: 'none', md: desktopOpen ? 'inline' : 'none' } }, '& .label-closed': { display: { xs: 'inline', md: desktopOpen ? 'none' : 'inline' } } }}>
-          <span className="label-open">Hide course index</span>
-          <span className="label-closed">Course index</span>
+          className={desktopOpen ? styles.toggle : `${styles.toggle} ${styles.toggleClosed}`}>
+          <span className={styles.labelOpen}>Hide course index</span>
+          <span className={styles.labelClosed}>Course index</span>
         </Button>
         {actions}
         </Box>

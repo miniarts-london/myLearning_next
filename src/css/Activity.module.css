@@ -1,0 +1,24 @@
+.article { max-width: 45rem; margin: 1.5rem 0; }
+
+.completion { margin: 1.5rem 0; }
+.completion:empty { display: none; }
+
+.divider { margin-top: 2rem; margin-bottom: 1.25rem; }
+
+/* Previous / Back to course / Next. On phones "Back to course" drops to its own row. */
+.pager { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: start; }
+.back { align-self: center; justify-self: center; grid-row: 2; grid-column: 1 / -1; }
+@media (min-width: 600px) {
+  .pager { grid-template-columns: 1fr auto 1fr; }
+  .back { grid-row: auto; grid-column: auto; }
+}
+
+.pagerLink { text-transform: none; padding-left: .5rem; padding-right: .5rem; }
+.prev { justify-self: start; text-align: left; }
+.next { justify-self: end; text-align: right; }
+.pagerText { display: grid; }
+.pagerLabel { color: var(--mui-palette-text-secondary); }
+.pagerName { font-weight: 600; }
+
+.due { margin-bottom: 1rem; font-weight: 600; }
+.alertGap { margin-top: 1rem; }

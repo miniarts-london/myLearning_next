@@ -4,6 +4,7 @@ import CardContent from '@mui/material/CardContent';
 import CardMedia from '@mui/material/CardMedia';
 import Typography from '@mui/material/Typography';
 import { fileUrl } from '@/lib/files';
+import styles from '@/css/CourseCard.module.css';
 import { ProgressBar } from './ProgressBar';
 
 interface Props {
@@ -14,22 +15,20 @@ interface Props {
 }
 
 export function CourseCard({ id, name, image, progress }: Props) {
+  const hasProgress = typeof progress === 'number';
+  const titleClass = image ? styles.titleOverImage : hasProgress ? styles.titleAboveProgress : styles.title;
   return (
-    <Card component="article"
-      sx={{ transition: 'transform .25s, box-shadow .25s', '&:hover, &:focus-within': { transform: 'translateY(-.25rem)', boxShadow: '0 1rem 2rem rgba(0, 0, 0, .12)' } }}>
+    <Card component="article" className={styles.card}>
       {/* The link holds just the image and title, so its accessible name is the course name. */}
       <CardActionArea href={`/courses/${id}`}>
-        {image && (
-          <CardMedia component="img" image={fileUrl(image)} alt="" loading="lazy"
-            sx={{ aspectRatio: '16 / 9', objectFit: 'cover', bgcolor: 'grey.100' }} />
-        )}
-        <CardContent sx={{ pb: typeof progress === 'number' ? 0 : 2 }}>
+        {image && <CardMedia component="img" image={fileUrl(image)} alt="" loading="lazy" className={styles.image} />}
+        <CardContent className={titleClass}>
           <Typography variant="h3" component="h3">{name}</Typography>
         </CardContent>
       </CardActionArea>
-      {typeof progress === 'number' && (
-        <CardContent sx={{ pt: 0 }}>
-          <ProgressBar value={progress} label={`${name} progress`} />
+      {hasProgress && (
+        <CardContent className={styles.progress}>
+          <ProgressBar value={progress} label={`${name} progress`} size={100} color="info" />
         </CardContent>
       )}
     </Card>

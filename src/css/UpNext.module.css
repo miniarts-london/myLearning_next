@@ -1,0 +1,17 @@
+.panel { padding: .5rem 1rem; }
+@media (min-width: 600px) {
+  .panel { padding: .5rem 1.5rem; }
+}
+
+.group { display: block; margin-top: .75rem; color: var(--mui-palette-text-secondary); font-weight: 600; }
+.overdue { color: var(--mui-palette-error-main); }
+
+.item { gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
+.item:last-child { border-bottom: 0; }
+@media (min-width: 600px) {
+  .item { flex-wrap: nowrap; }
+}
+
+.text { margin: 0; flex: 1; min-width: 12rem; }
+.title { font-weight: 600; }
+.due { white-space: nowrap; color: var(--mui-palette-text-secondary); padding-top: .125rem; }
