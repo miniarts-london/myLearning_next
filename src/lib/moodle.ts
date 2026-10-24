@@ -1,6 +1,7 @@
 import 'server-only';
 import { cache } from 'react';
 import type {
+  ActivityCompletionStatus, CourseUser,
   AssignSubmissionStatus, CalendarActionEvent, Category, Course, CourseModuleInfo, MoodleWarning, CourseSection, EnrolledCourse, MoodleAssignment,
   MoodleException, MoodlePage, MoodleUrl, SiteInfo,
 } from './types';
@@ -94,7 +95,8 @@ function learnerView(sections: CourseSection[]): CourseSection[] {
 
 // One function per web service the app uses, so pages read like plain function calls.
 export const moodle = {
-  siteInfo: (token: string) => call<SiteInfo>(token, 'core_webservice_get_site_info'),
+  // cache(): several parts of a page can ask (e.g. "is this user a site admin?"); Moodle is asked once.
+  siteInfo: cache((token: string) => call<SiteInfo>(token, 'core_webservice_get_site_info')),
 
   myCourses: async (token: string, userid: number) =>
     (await call<EnrolledCourse[]>(token, 'core_enrol_get_users_courses', { userid })).filter(shown),
@@ -163,6 +165,27 @@ export const moodle = {
     (await call<{ events: CalendarActionEvent[] }>(token, 'core_calendar_get_action_events_by_timesort', {
       timesortfrom: from, timesortto: to, limitnum: 50, limittononsuspendedevents: true,
     })).events,
+
+  // For teachers and admins -------------------------------------------------------------
+  // Moodle checks permissions on each of these. Note that students may also list a course's
+  // participants (it's how they find classmates), so the app decides who sees the learner list:
+  // see src/lib/staff.server.ts.
+
+  // One person's profile in one course, including their roles there. [] when not enrolled.
+  courseProfile: cache(async (token: string, userid: number, courseid: number) =>
+    (await call<CourseUser[]>(token, 'core_user_get_course_user_profiles', { userlist: [{ userid, courseid }] }))[0]),
+
+  // Everyone enrolled in a course, with their roles and when they last visited it.
+  enrolledUsers: (token: string, courseid: number) =>
+    call<CourseUser[]>(token, 'core_enrol_get_enrolled_users', {
+      courseid,
+      options: [{ name: 'userfields', value: 'id,fullname,roles,lastcourseaccess' }],
+    }),
+
+  // Every activity's completion for one user. Teachers may ask about their learners.
+  completionFor: async (token: string, courseid: number, userid: number) =>
+    (await call<{ statuses: ActivityCompletionStatus[] }>(token, 'core_completion_get_activities_completion_status', { courseid, userid }))
+      .statuses,
 
   setManualCompletion: (token: string, cmid: number, completed: boolean) =>
     call<{ status: boolean }>(token, 'core_completion_update_activity_completion_status_manually', { cmid, completed }),

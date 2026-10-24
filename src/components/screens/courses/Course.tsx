@@ -8,7 +8,9 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import PeopleIcon from '@mui/icons-material/PeopleOutlined';
 import { SafeHtml } from '@/components/SafeHtml';
 import { ProgressBar } from '@/components/ProgressBar';
 import { CompletionButton } from '@/components/CompletionButton';
@@ -24,9 +26,10 @@ interface CourseScreenProps {
   sections: CourseSection[] | null; // null when the user isn't enrolled
   progress: number | null;          // 0–100, or null when nothing is tracked
   moodleCourseUrl: string;          // Where to enrol, in Moodle
+  learnersHref?: string;            // Only for the course's teachers and site admins
 }
 
-export function CourseScreen({ course, sections, progress, moodleCourseUrl }: CourseScreenProps) {
+export function CourseScreen({ course, sections, progress, moodleCourseUrl, learnersHref }: CourseScreenProps) {
   return (
     <>
       <Breadcrumbs className={common.breadcrumbs}>
@@ -39,6 +42,11 @@ export function CourseScreen({ course, sections, progress, moodleCourseUrl }: Co
         <SafeHtml html={course.summary} className="summary" />
         {progress !== null && <ProgressBar value={progress} label="Course progress" />}
       </Grid>
+      {learnersHref && (
+        <Button href={learnersHref} variant="outlined" color="secondary" startIcon={<PeopleIcon />} className={styles.learners}>
+          Learners
+        </Button>
+      )}
       {sections === null ? (
         <Alert severity="info" className={styles.notEnrolled}>
           You aren&apos;t enrolled in this course.{' '}

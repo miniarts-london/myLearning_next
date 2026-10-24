@@ -1,4 +1,7 @@
 .intro { margin-bottom: 1.5rem; }
+
+/* "Learners", under the summary: teachers and admins only. */
+.learners { margin-bottom: 1.5rem; }
 .notEnrolled { margin-top: 1rem; }
 
 .activities { display: grid; gap: .5rem; }

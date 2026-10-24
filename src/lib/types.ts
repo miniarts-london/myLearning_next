@@ -8,6 +8,29 @@ export interface SiteInfo {
   fullname: string;
   sitename: string;
   siteurl: string;
+  userissiteadmin?: boolean;
+}
+
+// A role someone has in a course, e.g. { shortname: 'student' } or { shortname: 'editingteacher' }.
+export interface CourseRole {
+  roleid: number;
+  name: string;
+  shortname: string;
+}
+
+// Someone enrolled in a course (core_enrol_get_enrolled_users / core_user_get_course_user_profiles).
+export interface CourseUser {
+  id: number;
+  fullname: string;
+  roles?: CourseRole[];
+  lastcourseaccess?: number; // Unix seconds; 0 or missing = never
+}
+
+// One activity's completion for one user (core_completion_get_activities_completion_status).
+export interface ActivityCompletionStatus {
+  cmid: number;
+  state: number;    // 0 not complete, 1 complete, 2 complete and passed, 3 complete but failed
+  tracking: number; // 0 none, 1 manual, 2 automatic
 }
 
 export interface EnrolledCourse {

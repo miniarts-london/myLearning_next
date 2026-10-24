@@ -1,0 +1,16 @@
+/* The three numbers above the table. */
+.summary { display: flex; flex-wrap: wrap; gap: 1rem 2.5rem; margin: 0 0 1.5rem; }
+.summary dt { color: var(--mui-palette-text-secondary); font-size: .875rem; }
+.summary dd { margin: 0; font-size: 1.75rem; font-weight: 300; }
+
+.filter { margin-bottom: .25rem; }
+
+.name { font-weight: 600; }
+
+.progressColumn { width: 40%; }
+.progress { display: flex; align-items: center; gap: .75rem; }
+.bar { flex: 1; height: .5rem; border-radius: .25rem; background: var(--mui-palette-grey-200); }
+.count { white-space: nowrap; color: var(--mui-palette-text-secondary); font-size: .875rem; }
+
+/* Not visited for a while: stands out, in text as well as colour. */
+.inactive { color: var(--mui-palette-error-main); font-weight: 600; }
