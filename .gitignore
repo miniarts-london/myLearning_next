@@ -53,3 +53,6 @@ ai-service/.env
 ai-service/data/
 __pycache__/
 .pytest_cache/
+
+# Python virtual environments (anywhere)
+.venv/
