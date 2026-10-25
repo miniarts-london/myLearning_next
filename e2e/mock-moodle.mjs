@@ -28,14 +28,15 @@ const DAY = 86400;
 const role = (shortname) => ({ roleid: shortname === 'student' ? 5 : 3, name: shortname, shortname });
 const ROSTER = [
   { id: 5,  fullname: 'Sam Student',   role: 'student',        ago: 0,    completed: null },
-  { id: 7,  fullname: 'Tess Teacher',  role: 'editingteacher', ago: 0,    completed: [] },
+  { id: 7,  fullname: 'Tess Teacher',  role: 'editingteacher', ago: 0,    completed: [], alsoStudent: true }, // enrolled to try it out too
   { id: 21, fullname: 'Priya Shah',    role: 'student',        ago: 1,    completed: [11, 13, 21, 22] },
   { id: 22, fullname: 'Tom Okafor',    role: 'student',        ago: 3,    completed: [11, 21] },
   { id: 23, fullname: 'Lena Fischer',  role: 'student',        ago: 20,   completed: [11] },
   { id: 24, fullname: 'Ben Carter',    role: 'student',        ago: null, completed: [] }, // never visited
+  { id: 2,  fullname: 'Ada Admin',     role: 'student',        ago: 5,    completed: [] },  // the site admin, enrolled to try it
 ];
 const rosterUser = (r) => ({
-  id: r.id, fullname: r.fullname, roles: [role(r.role)],
+  id: r.id, fullname: r.fullname, roles: [role(r.role), ...(r.alsoStudent ? [role('student')] : [])],
   lastcourseaccess: r.ago === null ? 0 : Math.floor(Date.now() / 1000) - r.ago * DAY - 600,
 });
 
@@ -108,7 +109,8 @@ const events = () => {
     .filter((e) => !done.has(Number(new URL(e.url).searchParams.get('id'))) || e.id === 104)
     .filter((e) => !(e.id === 101 && submission.status === 'submitted')); // Moodle drops a deadline once it's submitted
 };
-let calendarDown = false; // POST /__calendar-down makes the calendar fail, to test the fallback
+let calendarDown = false;
+let messages = []; // Moodle messages sent through the app (GET /__messages shows them) // POST /__calendar-down makes the calendar fail, to test the fallback
 
 const exception = (errorcode, message) => ({ exception: 'moodle_exception', errorcode, message });
 
@@ -203,6 +205,12 @@ function webService(fn, p, user) {
       const from = Number(p.get('timesortfrom')), to = Number(p.get('timesortto'));
       return { events: events().filter((e) => e.timesort >= from && e.timesort <= to) };
     }
+    case 'core_message_send_instant_messages': {
+      const touserid = Number(p.get('messages[0][touserid]'));
+      if (![2, 5, 7, ...ROSTER.map((r) => r.id)].includes(touserid)) return [{ msgid: -1, clientmsgid: '', errormessage: 'User does not exist' }];
+      messages.push({ from: user.userid, touserid, text: p.get('messages[0][text]') });
+      return [{ msgid: messages.length, clientmsgid: '' }];
+    }
     case 'core_completion_update_activity_completion_status_manually': {
       const cmid = Number(p.get('cmid'));
       if (p.get('completed') === '1') done.add(cmid); else done.delete(cmid);
@@ -221,7 +229,8 @@ http.createServer((req, res) => {
     const json = (data) => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(data)); };
     const url = req.url ?? '';
 
-    if (url.startsWith('/__reset')) { done = new Set(INITIAL_DONE); calendarDown = false; submission = newSubmission(); return json({ ok: true }); }
+    if (url.startsWith('/__reset')) { done = new Set(INITIAL_DONE); calendarDown = false; submission = newSubmission(); messages = []; return json({ ok: true }); }
+    if (url.startsWith('/__messages')) return json(messages);
     if (url.startsWith('/__calendar-down')) { calendarDown = true; return json({ ok: true }); }
     if (url.startsWith('/login/token.php')) {
       const token = TOKEN_FOR[p.get('username')];

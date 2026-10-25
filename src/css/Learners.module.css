@@ -6,6 +6,11 @@
 .filter { margin-bottom: .25rem; }
 
 .name { font-weight: 600; }
+/* The name opens "Message <name>": looks like a link, sized like the rest of the table. */
+.nameButton { font: inherit; font-weight: 600; text-align: left; vertical-align: baseline; }
+
+.messageField { margin-top: .5rem; }
+.messageError { margin-top: 1rem; }
 
 .progressColumn { width: 40%; }
 .progress { display: flex; align-items: center; gap: .75rem; }

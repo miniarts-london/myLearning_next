@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { verifySession } from '@/lib/dal';
 import { moodle, moodleUrl, MoodleError } from '@/lib/moodle';
-import { canSeeLearners } from '@/lib/staff.server';
+import { canSeeLearners, teachesCourse } from '@/lib/staff.server';
+import { supportUserId } from '@/lib/accessRequest.server';
 import { Loading } from '@/components/Loading';
 import { CourseScreen } from '@/components/screens/courses/Course';
 
@@ -27,7 +28,7 @@ async function CourseContent({ params }: Props) {
   }
   const session = await verifySession();
 
-  const [course, contents, staff] = await Promise.all([
+  const [course, contents, staff, teaches] = await Promise.all([
     moodle.course(session.token, courseid),
     // Moodle refuses the contents of a course the user can't access: show a friendly message instead.
     moodle.courseContents(session.token, courseid).catch((e: unknown) => {
@@ -37,6 +38,7 @@ async function CourseContent({ params }: Props) {
       throw e;
     }),
     canSeeLearners(session.token, session.userid, courseid), // Teachers and admins get a "Learners" link
+    teachesCourse(session.token, session.userid, courseid),  // Teachers get no progress ring of their own
   ]);
   if (!course) {
     notFound();
@@ -52,9 +54,10 @@ async function CourseContent({ params }: Props) {
     <CourseScreen
       course={course}
       sections={sections}
-      progress={tracked.length > 0 ? (done / tracked.length) * 100 : null}
+      progress={!teaches && tracked.length > 0 ? (done / tracked.length) * 100 : null}
       moodleCourseUrl={moodleUrl(`/course/view.php?id=${courseid}`)}
       learnersHref={staff ? `/courses/${courseid}/learners` : undefined}
+      canRequestAccess={!staff && supportUserId() !== null}
     />
   );
 }

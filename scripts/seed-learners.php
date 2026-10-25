@@ -14,23 +14,27 @@
 //
 // These are test accounts for your local Moodle only. Their passwords are below.
 
-if (php_sapi_name() !== 'cli') {
-    exit("Run this from the command line.\n");
+// From the command line (below), or from the browser through web-seed.php, which has already
+// loaded Moodle, checked that you're a site admin and set $username to you.
+if (!defined('MLN_WEB_SEED')) {
+    if (php_sapi_name() !== 'cli') {
+        exit("Run this from the command line.\n");
+    }
+
+    $opts = getopt('', ['moodle::']);
+    $moodle = rtrim($opts['moodle'] ?? '/Applications/MAMP/htdocs/moodle', '/');
+    if (!is_file("$moodle/config.php")) {
+        fwrite(STDERR, "config.php not found in $moodle. Pass --moodle=/path/to/moodle\n");
+        exit(1);
+    }
+
+    define('CLI_SCRIPT', true);
+    require "$moodle/config.php";
+    require_once($CFG->libdir . '/completionlib.php');
+    require_once($CFG->libdir . '/testing/generator/lib.php');
+
+    \core\session\manager::set_user(get_admin());
 }
-
-$opts = getopt('', ['moodle::']);
-$moodle = rtrim($opts['moodle'] ?? '/Applications/MAMP/htdocs/moodle', '/');
-if (!is_file("$moodle/config.php")) {
-    fwrite(STDERR, "config.php not found in $moodle. Pass --moodle=/path/to/moodle\n");
-    exit(1);
-}
-
-define('CLI_SCRIPT', true);
-require "$moodle/config.php";
-require_once($CFG->libdir . '/completionlib.php');
-require_once($CFG->libdir . '/testing/generator/lib.php');
-
-\core\session\manager::set_user(get_admin());
 $gen = new testing_data_generator();
 
 const TEACHER_PASSWORD = 'Teacher-2026!';

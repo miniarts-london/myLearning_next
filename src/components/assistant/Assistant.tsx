@@ -13,15 +13,18 @@ import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import ErrorIcon from '@mui/icons-material/ErrorOutlineOutlined';
 import SendIcon from '@mui/icons-material/Send';
 import type { AgentEvent, ChatMessage } from '@/lib/agent/types';
+import { AssistantIcon } from './AssistantIcon';
 import { AssistantText } from './AssistantText';
 import styles from '@/css/Assistant.module.css';
 import common from '@/css/common.module.css';
+
+// The assistant's horse: the name shown in the panel heading.
+const ASSISTANT_NAME = 'Christopher Columbus II';
 
 // One answer, in the order things happened: text, the tools it used, more text…
 type Part = { kind: 'text'; text: string } | { kind: 'step'; id: string; label: string; status: 'running' | 'done' | 'error' };
@@ -114,7 +117,7 @@ export function Assistant() {
   return (
     <>
       <Fab variant="extended" color="primary" onClick={() => setOpen(true)} aria-haspopup="dialog" className={styles.fab}>
-        <AutoAwesomeIcon className={styles.fabIcon} /> Assistant
+        <AssistantIcon className={styles.fabIcon} /> Assistant
       </Fab>
 
       <Drawer anchor="right" open={open} onClose={() => setOpen(false)}
@@ -122,7 +125,10 @@ export function Assistant() {
         // Following a link closes the panel; the conversation stays for next time.
         onClick={(e) => { if ((e.target as HTMLElement).closest('a')) setOpen(false); }}>
         <Stack direction="row" className={styles.header}>
-          <Typography id="assistant-title" variant="h2" className={styles.title}>Assistant</Typography>
+          <Typography id="assistant-title" variant="h2" className={styles.title}>
+            <AssistantIcon className={styles.titleIcon} aria-hidden /> Assistant
+            <span className={styles.name}>({ASSISTANT_NAME})</span>
+          </Typography>
           <IconButton onClick={() => setOpen(false)} aria-label="Close"><CloseIcon /></IconButton>
         </Stack>
         <Typography variant="body2" className={styles.intro}>

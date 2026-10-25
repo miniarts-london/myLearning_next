@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { expectNotFound, login, resetMoodle } from './helpers';
+import { expectNotFound, login, MOODLE, resetMoodle } from './helpers';
 
 // Log in and wait until it has finished (the session cookie is set), before going anywhere.
 async function loginAs(page: Page, username: 'student' | 'teacher' | 'admin') {
@@ -81,4 +81,62 @@ test('the learner list passes the accessibility checks', async ({ page }) => {
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
     .analyze();
   expect(results.violations).toEqual([]);
+});
+
+test("site admins aren't listed, even when enrolled as students", async ({ page }) => {
+  await loginAs(page, 'teacher');
+  await page.goto('/courses/2/learners');
+  await expect(learnersTable(page)).toBeVisible();
+  expect(await learnerNames(page)).not.toContain('Ada Admin'); // id 2 = MOODLE_SUPPORT_USERID in the test setup
+});
+
+test("you don't appear in your own list, even when enrolled as a student", async ({ page }) => {
+  await loginAs(page, 'teacher'); // Tess Teacher is also enrolled in course 2 as a student
+  await page.goto('/courses/2/learners');
+  await expect(learnersTable(page)).toBeVisible();
+  expect(await learnerNames(page)).not.toContain('Tess Teacher');
+});
+
+test('selecting a name sends that learner a Moodle message', async ({ page, request }) => {
+  await loginAs(page, 'teacher');
+  await page.goto('/courses/2/learners');
+  await learnersTable(page).getByRole('button', { name: 'Priya Shah, send a message' }).click();
+
+  const dialog = page.getByRole('dialog', { name: 'Message Priya Shah' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByLabel(/Your message/)).toBeFocused();
+  await dialog.getByLabel(/Your message/).fill('Great work finishing the course!');
+  await dialog.getByRole('button', { name: 'Send' }).click();
+
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole('status').filter({ hasText: 'Message sent to Priya Shah.' })).toBeVisible();
+  const messages = await (await request.get(`${MOODLE}/__messages`)).json();
+  expect(messages).toEqual([{ from: 7, touserid: 21, text: 'Great work finishing the course!' }]);
+});
+
+test('the message dialog passes the accessibility checks', async ({ page }) => {
+  await loginAs(page, 'teacher');
+  await page.goto('/courses/2/learners');
+  await learnersTable(page).getByRole('button', { name: 'Tom Okafor, send a message' }).click();
+  await expect(page.getByRole('dialog', { name: 'Message Tom Okafor' })).toBeVisible();
+  const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(results.violations).toEqual([]);
+});
+
+test("teachers don't see a progress ring of their own on courses they teach", async ({ page }) => {
+  await loginAs(page, 'teacher');
+  const card = page.getByRole('main').getByRole('article').filter({ hasText: 'Accessible Web Design' });
+  await expect(card).toBeVisible();
+  await expect(card.getByRole('progressbar')).toHaveCount(0);
+
+  await page.goto('/courses/2');
+  await expect(page.getByRole('heading', { level: 1, name: 'Accessible Web Design' })).toBeVisible();
+  await expect(page.getByRole('progressbar', { name: 'Course progress' })).toHaveCount(0);
+});
+
+test('learners still see their progress ring', async ({ page }) => {
+  await loginAs(page, 'student');
+  await expect(page.getByRole('progressbar', { name: 'Accessible Web Design progress' })).toBeVisible();
+  await page.goto('/courses/2');
+  await expect(page.getByRole('progressbar', { name: 'Course progress' })).toBeVisible();
 });

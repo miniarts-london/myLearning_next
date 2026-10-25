@@ -187,6 +187,17 @@ export const moodle = {
     (await call<{ statuses: ActivityCompletionStatus[] }>(token, 'core_completion_get_activities_completion_status', { courseid, userid }))
       .statuses,
 
+  // Sends a Moodle message from this user to another (it appears in Moodle's messages and, depending
+  // on their preferences, by email). Moodle reports per-message problems as msgid -1 plus a reason.
+  sendMessage: async (token: string, touserid: number, text: string) => {
+    const [result] = await call<{ msgid: number; errormessage?: string }[]>(token, 'core_message_send_instant_messages', {
+      messages: [{ touserid, text, textformat: 2 }], // 2 = plain text
+    });
+    if (!result || result.msgid < 0) {
+      throw new MoodleError('messagenotsent', result?.errormessage ?? 'The message could not be sent.');
+    }
+  },
+
   setManualCompletion: (token: string, cmid: number, completed: boolean) =>
     call<{ status: boolean }>(token, 'core_completion_update_activity_completion_status_manually', { cmid, completed }),
 };

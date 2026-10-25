@@ -1,12 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import Alert from '@mui/material/Alert';
 import Breadcrumbs from '@mui/material/Breadcrumbs';
 import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import LinearProgress from '@mui/material/LinearProgress';
 import Link from '@mui/material/Link';
+import Snackbar from '@mui/material/Snackbar';
 import Paper from '@mui/material/Paper';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -20,6 +21,7 @@ import { INACTIVE_DAYS, isInactive, lastVisitLabel, type LearnerRow } from '@/li
 import type { Course } from '@/lib/types';
 import common from '@/css/common.module.css';
 import styles from '@/css/Learners.module.css';
+import { MessageLearner } from './MessageLearner';
 
 type SortKey = 'name' | 'progress' | 'lastVisit';
 type Direction = 'asc' | 'desc';
@@ -41,6 +43,9 @@ function compare(a: LearnerRow, b: LearnerRow, key: SortKey): number {
 export function LearnersScreen({ course, learners, now }: { course: Course; learners: LearnerRow[]; now: number }) {
   const [sort, setSort] = useState<{ key: SortKey; direction: Direction }>({ key: 'name', direction: 'asc' });
   const [onlyInactive, setOnlyInactive] = useState(false);
+  const [messaging, setMessaging] = useState<{ id: number; name: string } | null>(null);
+  const [sent, setSent] = useState<string | null>(null);
+  const onSent = useCallback((confirmation: string) => { setMessaging(null); setSent(confirmation); }, []);
 
   const rows = useMemo(() => {
     const shown = onlyInactive ? learners.filter((l) => isInactive(l.lastVisit, now)) : learners;
@@ -88,7 +93,7 @@ export function LearnersScreen({ course, learners, now }: { course: Course; lear
 
           <TableContainer component={Paper} elevation={0} className={common.softShadow}>
             <Table>
-              <caption className="visually-hidden">Learners in {course.fullname}. Select a column heading to sort.</caption>
+              <caption className="visually-hidden">Learners in {course.fullname}. Select a column heading to sort, or a name to send that learner a message.</caption>
               <TableHead>
                 <TableRow>
                   {COLUMNS.map(({ key, label, firstDirection }) => {
@@ -106,9 +111,14 @@ export function LearnersScreen({ course, learners, now }: { course: Course; lear
                 </TableRow>
               </TableHead>
               <TableBody>
-                {rows.map((l) => (
+                {rows.map((l) => ( 
                   <TableRow key={l.id}>
-                    <TableCell component="th" scope="row" className={styles.name}>{l.name}</TableCell>
+                    <TableCell component="th" scope="row" className={styles.name}>
+                      <Link component="button" type="button" onClick={() => setMessaging({ id: l.id, name: l.name })}
+                        className={styles.nameButton} aria-haspopup="dialog" aria-label={`${l.name}, send a message`}>
+                        {l.name}
+                      </Link>
+                    </TableCell>
                     <TableCell>
                       {l.progress === null ? (
                         <span className={common.muted}>Not available</span>
@@ -128,6 +138,12 @@ export function LearnersScreen({ course, learners, now }: { course: Course; lear
               </TableBody>
             </Table>
           </TableContainer>
+
+          <MessageLearner courseid={course.id} learner={messaging} onClose={() => setMessaging(null)} onSent={onSent} />
+          <Snackbar open={sent !== null} autoHideDuration={5000} onClose={() => setSent(null)}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}>
+            <Alert severity="success" variant="filled" role="status" onClose={() => setSent(null)}>{sent}</Alert>
+          </Snackbar>
         </>
       )}
     </>

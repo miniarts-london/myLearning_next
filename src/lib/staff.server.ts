@@ -3,6 +3,7 @@ import { cache } from 'react';
 import { connection } from 'next/server';
 import { moodle, MoodleError } from './moodle';
 import { isComplete, isStaff, type LearnerRow } from './learners';
+import { adminUserIds } from './accessRequest.server';
 
 // Whether this user may see the learners of this course: site admins (any course), and
 // teachers and managers enrolled in it. Checked on the server for every request.
@@ -15,6 +16,16 @@ export const canSeeLearners = cache(async (token: string, userid: number, course
     }),
   ]);
   return isStaff((profile?.roles ?? []).map((r) => r.shortname), info.userissiteadmin === true);
+});
+
+// Whether this user teaches (or manages) this course: their own role in it, not site admin.
+// Used to hide learner-only things such as their own progress ring.
+export const teachesCourse = cache(async (token: string, userid: number, courseid: number): Promise<boolean> => {
+  const profile = await moodle.courseProfile(token, userid, courseid).catch((e: unknown) => {
+    if (e instanceof MoodleError) return undefined;
+    throw e;
+  });
+  return isStaff((profile?.roles ?? []).map((r) => r.shortname), false);
 });
 
 // Runs `task` over `items`, at most `limit` at a time, keeping the order.
@@ -31,12 +42,14 @@ async function mapLimit<T, R>(items: T[], limit: number, task: (item: T) => Prom
   return results;
 }
 
-// The course's learners (people with the student role) and each one's progress.
+// The course's learners (people with the student role) and each one's progress, leaving out the
+// person looking and site admins (both may be enrolled as students to try a course out).
 // `trackedCmids`: the activities learners see that have completion tracking, so progress here
 // matches what each learner sees on their own course page.
-export async function courseLearners(token: string, courseid: number, trackedCmids: number[]): Promise<LearnerRow[]> {
+export async function courseLearners(token: string, courseid: number, trackedCmids: number[], viewerId: number): Promise<LearnerRow[]> {
   const people = await moodle.enrolledUsers(token, courseid);
-  const learners = people.filter((p) => p.roles?.some((r) => r.shortname === 'student'));
+  const admins = adminUserIds();
+  const learners = people.filter((p) => p.id !== viewerId && !admins.has(p.id) && p.roles?.some((r) => r.shortname === 'student'));
   const tracked = new Set(trackedCmids);
 
   // One Moodle call per learner, a few at a time, so a big class doesn't flood Moodle.

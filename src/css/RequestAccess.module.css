@@ -1,0 +1,7 @@
+.box { margin-top: 1rem; }
+/* Alert's message area is a flex child: let the form use the full width. */
+.box :global(.MuiAlert-message) { flex: 1; }
+
+.form { margin-top: 1rem; max-width: 36rem; }
+.error { margin-top: .75rem; }
+.buttons { margin-top: .75rem; }

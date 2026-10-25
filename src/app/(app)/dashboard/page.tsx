@@ -4,6 +4,7 @@ import { connection } from 'next/server';
 import { verifySession } from '@/lib/dal';
 import { moodle } from '@/lib/moodle';
 import { loadUpNext } from '@/lib/upNext.server';
+import { teachesCourse } from '@/lib/staff.server';
 import { Loading } from '@/components/Loading';
 import { DashboardScreen } from '@/components/screens/Dashboard';
 
@@ -28,5 +29,9 @@ async function Dashboard() {
     loadUpNext(session.token, coursesRequest.then((list) => new Set(list.map((c) => c.id)))),
   ]);
 
-  return <DashboardScreen firstname={session.firstname} courses={courses} upNext={upNext} />;
+  // No progress ring on courses this user teaches: it's their learners' progress that matters.
+  const teaching = await Promise.all(courses.map((c) => teachesCourse(session.token, session.userid, c.id)));
+  const shown = courses.map((c, i) => (teaching[i] ? { ...c, progress: null } : c));
+
+  return <DashboardScreen firstname={session.firstname} courses={shown} upNext={upNext} />;
 }

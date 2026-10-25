@@ -7,7 +7,10 @@
 .paper { width: min(460px, 100vw); display: flex; }
 
 .header { align-items: center; justify-content: space-between; padding: 1rem 1.25rem 0; }
-.title { font-size: 1.25rem; }
+.title { font-size: 1.25rem; display: flex; align-items: baseline; gap: .5rem; color: var(--mui-palette-primary-main); }
+/* The horse's name, after "Assistant": smaller, on the same baseline. */
+.name { font-size: .8em; }
+.titleIcon { color: var(--mui-palette-primary-main); font-size: 1.75rem; align-self: center; }
 .intro { padding: 0 1.25rem .75rem; color: var(--mui-palette-text-secondary); }
 
 .messages { flex: 1; overflow-y: auto; padding: .5rem 1.25rem; border-top: 1px solid var(--mui-palette-divider); }

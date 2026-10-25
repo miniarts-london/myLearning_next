@@ -41,7 +41,7 @@ async function LearnersContent({ params }: Props) {
     notFound();
   }
   const tracked = (contents ?? []).flatMap((s) => s.modules).filter((m) => m.completiondata?.hascompletion).map((m) => m.id);
-  const learners = await courseLearners(session.token, courseid, tracked);
+  const learners = await courseLearners(session.token, courseid, tracked, session.userid);
 
   return <LearnersScreen course={course} learners={learners} now={await requestTime()} />;
 }

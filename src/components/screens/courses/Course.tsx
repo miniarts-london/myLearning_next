@@ -11,6 +11,7 @@ import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import PeopleIcon from '@mui/icons-material/PeopleOutlined';
+import { RequestAccess } from '@/components/RequestAccess';
 import { SafeHtml } from '@/components/SafeHtml';
 import { ProgressBar } from '@/components/ProgressBar';
 import { CompletionButton } from '@/components/CompletionButton';
@@ -27,9 +28,10 @@ interface CourseScreenProps {
   progress: number | null;          // 0–100, or null when nothing is tracked
   moodleCourseUrl: string;          // Where to enrol, in Moodle
   learnersHref?: string;            // Only for the course's teachers and site admins
+  canRequestAccess?: boolean;       // Not enrolled: offer "Ask for access" instead of a link to Moodle
 }
 
-export function CourseScreen({ course, sections, progress, moodleCourseUrl, learnersHref }: CourseScreenProps) {
+export function CourseScreen({ course, sections, progress, moodleCourseUrl, learnersHref, canRequestAccess }: CourseScreenProps) {
   return (
     <>
       <Breadcrumbs className={common.breadcrumbs}>
@@ -48,13 +50,18 @@ export function CourseScreen({ course, sections, progress, moodleCourseUrl, lear
         </Button>
       )}
       {sections === null ? (
-        <Alert severity="info" className={styles.notEnrolled}>
-          You aren&apos;t enrolled in this course.{' '}
-          <Link component="a" href={moodleCourseUrl} target="_blank" rel="noopener noreferrer">
-            Open it in Moodle<span className="visually-hidden"> (opens in a new tab)</span>
-            <OpenInNewIcon fontSize="inherit" className={common.externalIcon} />
-          </Link>{' '}to enrol.
-        </Alert>
+        canRequestAccess
+          ? <RequestAccess courseid={course.id} coursename={course.fullname} />
+          : (
+            // Admins (and sites with no one set up to receive requests) get Moodle's own course page.
+            <Alert severity="info" className={styles.notEnrolled}>
+              You aren&apos;t enrolled in this course.{' '}
+              <Link component="a" href={moodleCourseUrl} target="_blank" rel="noopener noreferrer">
+                Open it in Moodle<span className="visually-hidden"> (opens in a new tab)</span>
+                <OpenInNewIcon fontSize="inherit" className={common.externalIcon} />
+              </Link>{' '}to enrol.
+            </Alert>
+          )
       ) : (
         <>
           {/* {progress !== null && <ProgressBar value={progress} label="Course progress" />} */}

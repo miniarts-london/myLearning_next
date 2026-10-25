@@ -29,12 +29,11 @@ test('a hidden course is "not found" even by its address', async ({ page }) => {
   await expectNotFound(page);
 });
 
-test('a course you are not enrolled in offers to enrol in Moodle, in a new tab', async ({ page }) => {
+test('a course you are not enrolled in offers to ask the administrator for access', async ({ page }) => {
   await page.goto('/courses/3');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Horse Care Essentials');
-  const enrol = page.getByRole('link', { name: /Open it in Moodle/ });
-  await expect(enrol).toHaveAttribute('target', '_blank');
-  await expect(enrol).toHaveAttribute('href', /\/course\/view\.php\?id=3$/);
+  await expect(page.getByText("You aren't enrolled in this course.")).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Ask for access' })).toBeVisible();
 });
 
 test('the course page lists sections and visible activities only', async ({ page }) => {
