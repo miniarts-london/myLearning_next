@@ -27,13 +27,13 @@ test('a long category description opens and closes', async ({ page }) => {
 });
 
 test('a short description has no button', async ({ page }) => {
-  const section = page.getByRole('region', { name: 'Personal Development' });
+  const section = page.getByRole('region', { name: 'Personal & Professional Development' });
   await expect(section.getByText('Skills for everyday life.')).toBeVisible();
   await expect(section.getByRole('button', { name: /Show more/ })).toHaveCount(0);
 });
 
 test("a category's own image (an SVG uploaded to its description) is shown", async ({ page }) => {
-  const img = page.getByRole('region', { name: 'Personal Development' }).getByRole('img', { name: 'Category icon' });
+  const img = page.getByRole('region', { name: 'Personal & Professional Development' }).getByRole('img', { name: 'Category icon' });
   await expect(img).toHaveAttribute('src', /^\/api\/file\?url=.*coursecat%2Fdescription/);
   await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0)).toBe(true);
 });

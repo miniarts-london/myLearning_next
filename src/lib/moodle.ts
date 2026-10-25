@@ -1,7 +1,8 @@
 import 'server-only';
 import { cache } from 'react';
+import { decodeEntities, decodeNames } from './entities';
 import type {
-  ActivityCompletionStatus, CourseUser, MoodleConversation, MoodleConversationMember, MoodleMessage,
+  ActivityCompletionStatus, CalendarEvent, CourseUser, MoodleConversation, MoodleConversationMember, MoodleMessage,
   AssignSubmissionStatus, CalendarActionEvent, Category, Course, CourseModuleInfo, MoodleWarning, CourseSection, EnrolledCourse, MoodleAssignment,
   MoodleException, MoodlePage, MoodleUrl, SiteInfo,
 } from './types';
@@ -63,9 +64,10 @@ export async function call<T>(token: string, wsfunction: string, params: Params 
   const data: unknown = await res.json();
   // Moodle reports errors as a normal 200 response with an "exception" field.
   if (isException(data)) {
-    throw new MoodleError(data.errorcode, data.message);
+    throw new MoodleError(data.errorcode, decodeEntities(data.message));
   }
-  return data as T;
+  // Names arrive HTML-escaped ("Business &amp; Careers"): turn them back into plain text.
+  return decodeNames(data) as T;
 }
 
 // Exchange a username and password for this user's token, through Moodle's mobile app service.
@@ -221,6 +223,11 @@ export const moodle = {
 
   unreadConversations: (token: string, userid: number) =>
     call<number>(token, 'core_message_get_unread_conversations_count', { useridto: userid }),
+
+  // The user's upcoming calendar events (course, site, personal and activity events), as on Moodle's
+  // "Upcoming events" block: the look-ahead and number come from the user's calendar settings.
+  upcomingEvents: async (token: string) =>
+    (await call<{ events: CalendarEvent[] }>(token, 'core_calendar_get_calendar_upcoming_view', {})).events,
 
   setManualCompletion: (token: string, cmid: number, completed: boolean) =>
     call<{ status: boolean }>(token, 'core_completion_update_activity_completion_status_manually', { cmid, completed }),

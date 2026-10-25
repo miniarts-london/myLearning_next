@@ -87,7 +87,7 @@ const courses = [
 ];
 const categories = [
   { id: 1, name: 'Web Development', description: '<p>Courses on building for the web: HTML, CSS and JavaScript, accessibility, performance and testing.</p><p>Each course mixes short readings with practical exercises you can do in your browser, and most take four to six weeks at a few hours a week.</p><p>Start with Accessible Web Design if you are new to the subject; the other courses build on it.</p><p>Every course ends with a small project you can add to your portfolio.</p>', parent: 0, coursecount: 2, sortorder: 1, visible: 1 },
-  { id: 2, name: 'Personal Development', description: `<p><img src="${BASE}/webservice/pluginfile.php/7/coursecat/description/icon.svg" alt="Category icon" width="72" height="72"></p><p>Skills for everyday life.</p>`, parent: 0, coursecount: 1, sortorder: 2, visible: 1 },
+  { id: 2, name: 'Personal &amp; Professional Development', description: `<p><img src="${BASE}/webservice/pluginfile.php/7/coursecat/description/icon.svg" alt="Category icon" width="72" height="72"></p><p>Skills for everyday life.</p>`, parent: 0, coursecount: 1, sortorder: 2, visible: 1 },
   { id: 3, name: 'Hidden category', description: '', parent: 0, coursecount: 0, sortorder: 3, visible: 0 },
 ];
 
@@ -264,6 +264,16 @@ function webService(fn, p, user) {
     }
     case 'core_message_get_unread_conversations_count':
       return conversations.filter((c) => c.members.includes(user.userid) && viewFor(c, user.userid).unreadcount).length;
+    case 'core_calendar_get_calendar_upcoming_view': {
+      const now = Math.floor(Date.now() / 1000);
+      const course = { id: 2, fullname: 'Accessible Web Design' };
+      return { events: [
+        { id: 201, name: 'Live Q&amp;A session', eventtype: 'course', modulename: null, timestart: now + 2 * HOUR, timeduration: HOUR, url: `${BASE}/calendar/view.php?view=day`, course },
+        { id: 202, name: 'Assignment: Accessibility audit is due', eventtype: 'due', modulename: 'assign', timestart: now + 4 * 24 * HOUR, timeduration: 0, url: `${BASE}/mod/assign/view.php?id=13`, course },
+        { id: 203, name: 'Site maintenance', eventtype: 'site', modulename: null, timestart: now + 10 * 24 * HOUR, timeduration: 2 * HOUR, url: `${BASE}/calendar/view.php`, course: { id: 1, fullname: 'Test Moodle' } },
+        { id: 204, name: 'Secret course meeting', eventtype: 'course', modulename: null, timestart: now + 24 * HOUR, timeduration: 0, url: '', course: { id: 4, fullname: 'Secret course' } },
+      ] };
+    }
     case 'core_completion_update_activity_completion_status_manually': {
       const cmid = Number(p.get('cmid'));
       if (p.get('completed') === '1') done.add(cmid); else done.delete(cmid);

@@ -18,7 +18,8 @@ test('the catalogue groups courses by category, leaving out hidden ones', async 
   await expect(page).toHaveURL(/\/catalogue$/);
   const main = page.getByRole('main');
   await expect(main.getByRole('heading', { level: 2, name: 'Web Development' })).toBeVisible();
-  await expect(main.getByRole('heading', { level: 2, name: 'Personal Development' })).toBeVisible();
+  await expect(main.getByRole('heading', { level: 2, name: 'Personal & Professional Development' })).toBeVisible();
+  await expect(main).not.toContainText('&amp;'); // Moodle's escaped names are shown as plain text
   await expect(main.getByRole('heading', { name: 'Horse Care Essentials' })).toBeVisible();
   await expect(main).not.toContainText('Secret course');
   await expect(main).not.toContainText('Hidden category');

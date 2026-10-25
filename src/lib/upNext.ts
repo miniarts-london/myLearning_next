@@ -29,7 +29,7 @@ function dayKey(seconds: number): string {
     .format(new Date(seconds * 1000));
 }
 
-function groupFor(due: number, now: number): UpNextGroup {
+export function groupFor(due: number, now: number): UpNextGroup {
   if (due < now) return 'Overdue';
   const day = dayKey(due);
   if (day === dayKey(now)) return 'Today';
@@ -46,7 +46,7 @@ const WHAT: Record<string, string> = {
 };
 
 // The activity's id (cmid) is in Moodle's link: .../mod/assign/view.php?id=13
-function cmidFrom(url: string): number | undefined {
+export function cmidFrom(url: string): number | undefined {
   try {
     const id = Number(new URL(url).searchParams.get('id'));
     return Number.isInteger(id) && id > 0 ? id : undefined;

@@ -204,6 +204,19 @@ export interface CalendarActionEvent {
   action?: { name: string; actionable: boolean };
 }
 
+// An event in the user's Moodle calendar (core_calendar_get_calendar_upcoming_view).
+export interface CalendarEvent {
+  id: number;
+  name: string;            // e.g. "Live Q&A session", "Accessibility audit is due"
+  eventtype: string;       // e.g. "course", "site", "user", "group", "due", "open", "close"
+  modulename?: string | null; // Set for activity events, e.g. "assign"
+  timestart: number;       // Unix seconds
+  timeduration?: number;   // Seconds; 0 for a moment in time
+  url?: string;            // Where Moodle shows it: the activity for activity events
+  location?: string;
+  course?: { id: number; fullname: string } | null; // Missing for site and personal events
+}
+
 export interface MoodleException {
   exception: string;
   errorcode: string;

@@ -5,6 +5,8 @@ import { CourseCard } from '@/components/CourseCard';
 import { CourseGrid } from '@/components/CourseGrid';
 import { SectionTitle } from '@/components/SectionTitle';
 import { UpNext } from '@/components/UpNext';
+import { UpcomingEvents } from '@/components/UpcomingEvents';
+import type { EventItem } from '@/lib/events';
 import type { EnrolledCourse } from '@/lib/types';
 import type { UpNextItem } from '@/lib/upNext';
 import common from '@/css/common.module.css';
@@ -12,17 +14,23 @@ import common from '@/css/common.module.css';
 interface DashboardScreenProps {
   firstname: string;
   courses: EnrolledCourse[];
-  upNext: UpNextItem[] | null; // null when Moodle's calendar couldn't be reached
+  // Each is undefined when it doesn't apply (no "Up next" for someone who only teaches; "Upcoming
+  // events" only for teachers), and null when Moodle's calendar couldn't be reached.
+  upNext?: UpNextItem[] | null;
+  events?: EventItem[] | null;
 }
 
-export function DashboardScreen({ firstname, courses, upNext }: DashboardScreenProps) {
+export function DashboardScreen({ firstname, courses, upNext, events }: DashboardScreenProps) {
   return (
     <>
       <Typography variant="h1" className={common.pageTitle}>Welcome back, {firstname}</Typography>
 
+      {/* "Up next": a learner's deadlines, or for a teacher, the upcoming events in their calendar.
+          (Someone who both teaches and studies sees both, one after the other.) */}
       <section aria-labelledby="up-next">
         <SectionTitle id="up-next">Up next</SectionTitle>
-        <UpNext items={upNext} />
+        {upNext !== undefined && <UpNext items={upNext} />}
+        {events !== undefined && <div className={upNext !== undefined ? common.gapAbove : undefined}><UpcomingEvents items={events} /></div>}
       </section>
 
       <section aria-labelledby="my-courses">

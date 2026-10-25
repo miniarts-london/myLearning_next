@@ -11,3 +11,6 @@
 
 /* The soft shadow used on panels and activity rows. */
 .softShadow { box-shadow: 0 0 1.25rem rgba(0, 0, 0, .06); }
+
+/* Space between two blocks in the same section. */
+.gapAbove { margin-top: 1.5rem; }
