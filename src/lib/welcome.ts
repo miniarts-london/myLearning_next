@@ -32,5 +32,6 @@ export function setWelcoming(on: boolean) {
   clearTimeout(safety);
   if (on && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return; // No animation: nothing to hide
   document.documentElement.toggleAttribute('data-welcome', on);
+  if (!on) document.documentElement.removeAttribute('data-welcome-landed');
   if (on) safety = setTimeout(() => document.documentElement.removeAttribute('data-welcome'), SAFETY_MS);
 }

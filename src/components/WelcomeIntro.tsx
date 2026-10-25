@@ -13,7 +13,8 @@ import styles from '@/css/WelcomeIntro.module.css';
 const HELLO_MS = 1600;    // The greeting shows for at least this long…
 const MAX_WAIT_MS = 8000; // …and at most this long, however slow the page is to load
 const FLY_MS = 900;       // The horse's trip to the Assistant button
-const FADE_MS = 700;      // The page fading in, once the horse has landed (matches globals.css)
+const PAUSE_MS = 600;     // After the horse lands in the button, a moment before the page appears…
+const FADE_MS = 1000;     // …then the page fades in (matches globals.css)
 
 const pageReady = () =>
   Boolean(document.querySelector('main h1')) && !document.querySelector('main [data-loading]');
@@ -83,10 +84,14 @@ export function WelcomeIntro({ withAssistant }: { withAssistant: boolean }) {
       } else {
         horse.current?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'forwards' });
       }
-      // Landed: the page fades in (and the button shows its own horse again), then the intro goes.
+      // Landed: the button shows its own horse again straight away; after a short pause the page
+      // fades in, and then the intro goes.
       timer = setTimeout(() => {
-        setWelcoming(false);
-        timer = setTimeout(() => setPhase('done'), FADE_MS);
+        document.documentElement.setAttribute('data-welcome-landed', '');
+        timer = setTimeout(() => {
+          setWelcoming(false);
+          timer = setTimeout(() => setPhase('done'), FADE_MS);
+        }, PAUSE_MS);
       }, FLY_MS);
     };
 
