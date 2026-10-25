@@ -12,7 +12,7 @@ import { NavLinks, NavLinksFallback } from '@/components/NavLinks';
 import { Assistant } from '@/components/assistant/Assistant';
 import { Messages } from '@/components/messages/Messages';
 import { WelcomeIntro } from '@/components/WelcomeIntro';
-import { WELCOME_COOKIE } from '@/lib/welcome';
+import { WELCOME_COOKIE, WELCOME_EARLY_SCRIPT } from '@/lib/welcome';
 import { cookies } from 'next/headers';
 import { assistantConfigured } from '@/lib/agent/config';
 import styles from '@/css/AppLayout.module.css';
@@ -22,6 +22,10 @@ import styles from '@/css/AppLayout.module.css';
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
+      {/* On a full page load right after logging in, hide the page before it's first drawn, so it
+          only appears once the welcome animation's horse has landed. (After the login form, the
+          form itself does this; this covers reloads and slow connections.) */}
+      <script dangerouslySetInnerHTML={{ __html: WELCOME_EARLY_SCRIPT }} />
       <a className="skip-link" href="#main">Skip to main content</a>
       <AppBar component="header" data-app-shell>
         <Container maxWidth="lg">

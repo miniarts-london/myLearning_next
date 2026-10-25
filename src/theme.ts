@@ -17,8 +17,8 @@ export const theme = createTheme({
     // White text on plum: black text on plum is only about 3:1, below the 4.5:1 WCAG AA needs.
     primary: { main: plum, contrastText: '#fff' },
     secondary: { main: black, contrastText: '#fff' },
-    // Your green with dark text: white on #459e60 is only 3.3:1 (WCAG needs 4.5:1); black is 6.3:1.
-    success: { main: '#459e60', contrastText: '#000' },   // Progress and "Done"
+    // A deeper shade of your green (#459e60), so white text on it is readable: 5.1:1 (WCAG needs 4.5:1).
+    success: { main: '#2f7d47', contrastText: '#fff' },   // Progress and "Done"
     error: { main: '#b00020' },
     info: { main: '#218fbe', contrastText: '#fff' },      // Links and "Ask this course"
     // Darker than MUI's default orange (#ed6c02, about 3:1 on white), so warning text passes 4.5:1.

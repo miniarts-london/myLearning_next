@@ -87,7 +87,7 @@ const courses = [
 ];
 const categories = [
   { id: 1, name: 'Web Development', description: '<p>Courses on building for the web: HTML, CSS and JavaScript, accessibility, performance and testing.</p><p>Each course mixes short readings with practical exercises you can do in your browser, and most take four to six weeks at a few hours a week.</p><p>Start with Accessible Web Design if you are new to the subject; the other courses build on it.</p><p>Every course ends with a small project you can add to your portfolio.</p>', parent: 0, coursecount: 2, sortorder: 1, visible: 1 },
-  { id: 2, name: 'Personal Development', description: '<p>Skills for everyday life.</p>', parent: 0, coursecount: 1, sortorder: 2, visible: 1 },
+  { id: 2, name: 'Personal Development', description: `<p><img src="${BASE}/webservice/pluginfile.php/7/coursecat/description/icon.svg" alt="Category icon" width="72" height="72"></p><p>Skills for everyday life.</p>`, parent: 0, coursecount: 1, sortorder: 2, visible: 1 },
   { id: 3, name: 'Hidden category', description: '', parent: 0, coursecount: 0, sortorder: 3, visible: 0 },
 ];
 
@@ -298,7 +298,7 @@ http.createServer((req, res) => {
     // Files: the generated course pattern, and an uploaded SVG (which must never be shown inline).
     if (url.startsWith('/webservice/pluginfile.php/')) {
       if (new URL(url, BASE).searchParams.get('token') !== TOKEN) { res.statusCode = 403; return res.end('Forbidden'); }
-      if (url.includes('/course/generated/course.svg') || url.includes('/mod_forum/attachment/evil.svg')) {
+      if (url.includes('/course/generated/course.svg') || url.includes('/mod_forum/attachment/evil.svg') || url.includes('/coursecat/description/')) {
         res.setHeader('Content-Type', 'image/svg+xml');
         return res.end(url.includes('evil') ? '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>' : PATTERN);
       }

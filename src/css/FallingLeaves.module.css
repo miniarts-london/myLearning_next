@@ -1,0 +1,37 @@
+/* Covers the login page behind the card; never catches clicks. */
+.leaves { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+
+/* Each leaf falls the full height of the screen while swaying side to side and turning.
+   Two animations on two elements: the outer one falls and sways, the inner one spins. */
+.leaf {
+  position: absolute;
+  top: -10vh;
+  left: var(--x);
+  width: var(--size);
+  height: var(--size);
+  opacity: .55;
+  animation: fall var(--duration) linear var(--delay) infinite;
+}
+.shape {
+  display: block;
+  width: 100%;
+  height: 100%;
+  animation: spin calc(var(--duration) / 3) ease-in-out var(--delay) infinite alternate;
+}
+
+@keyframes fall {
+  0%   { transform: translate(0, 0); }
+  25%  { transform: translate(var(--sway), 30vh); }
+  50%  { transform: translate(0, 60vh); }
+  75%  { transform: translate(calc(var(--sway) * -1), 90vh); }
+  100% { transform: translate(0, 120vh); }
+}
+@keyframes spin {
+  from { transform: rotate(-35deg) rotateY(0deg); }
+  to   { transform: rotate(45deg) rotateY(160deg); }
+}
+
+/* Reduced motion: no falling leaves at all. */
+@media (prefers-reduced-motion: reduce) {
+  .leaves { display: none; }
+}

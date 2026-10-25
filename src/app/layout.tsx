@@ -12,7 +12,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    // suppressHydrationWarning: a tiny script may add data-welcome to <html> before React starts
+    // (see the welcome animation in (app)/layout.tsx).
+    <html lang="en" suppressHydrationWarning>
       <body>
         {/* Collects MUI's styles during server rendering, so pages arrive already styled.
             enableCssLayer puts MUI's own styles in a CSS layer, so the styles in src/css always

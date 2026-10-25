@@ -5,6 +5,9 @@ import { moodleUrl } from '@/lib/moodle';
 // Only these are shown in the page. Anything else (HTML, SVG, PDF, ...) is downloaded,
 // because a file served from this app's origin could otherwise run scripts as the learner.
 const INLINE_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp']);
+// Moodle file areas whose SVGs are pictures (shown inline): category descriptions, course images
+// and summaries, and Moodle's generated course placeholder.
+const SVG_PICTURE_AREAS = /\/(coursecat\/description|course\/(overviewfiles|summary|generated))\//;
 
 // Streams a Moodle file (course image, image in a description) to the browser,
 // adding the user's token on the server so it never appears in the page.
@@ -44,11 +47,12 @@ export async function GET(request: NextRequest) {
   }
 
   const type = (file.headers.get('Content-Type') ?? '').split(';')[0].trim().toLowerCase();
-  // The one SVG shown in the page: the patterned placeholder Moodle itself makes for a course with
-  // no image (course/generated/). Uploaded SVGs are still downloads. Even if someone opened this
-  // address directly, the sandbox policy below stops any script in it from running.
-  const generatedCourseImage = type === 'image/svg+xml' && /\/course\/generated\//.test(url.pathname);
-  const inline = INLINE_TYPES.has(type) || generatedCourseImage;
+  // SVGs shown in the page: images that belong to course categories and courses (icons uploaded to
+  // a category's description, course images, Moodle's generated placeholder). An <img> never runs
+  // scripts, and if someone opened this address directly, the sandbox policy below stops any
+  // script in it from running. Other SVGs (e.g. attachments in forums) are still downloads.
+  const pictureSvg = type === 'image/svg+xml' && SVG_PICTURE_AREAS.test(url.pathname);
+  const inline = INLINE_TYPES.has(type) || pictureSvg;
   let name = url.pathname.split('/').pop() || 'file';
   try {
     name = decodeURIComponent(name);

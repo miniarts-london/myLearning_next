@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fileUrl } from './files';
+import { courseImageUrl, DEFAULT_COURSE_IMAGE, fileUrl } from './files';
 
 describe('fileUrl', () => {
   it('sends Moodle files through /api/file', () => {
@@ -16,5 +16,17 @@ describe('fileUrl', () => {
     expect(fileUrl('data:text/html;base64,PHNjcmlwdD4=')).toBeUndefined();
     expect(fileUrl(undefined)).toBeUndefined();
     expect(fileUrl('')).toBeUndefined();
+  });
+});
+
+describe('courseImageUrl', () => {
+  it("uses the course's own uploaded image", () => {
+    expect(courseImageUrl('http://localhost:8080/pluginfile.php/42/course/overviewfiles/a.jpg')).toMatch(/^\/api\/file\?url=/);
+  });
+
+  it("uses the default picture when there's no image, or only Moodle's generated pattern", () => {
+    expect(courseImageUrl(undefined)).toBe(DEFAULT_COURSE_IMAGE);
+    expect(courseImageUrl('data:image/svg+xml;base64,PHN2Zy8+')).toBe(DEFAULT_COURSE_IMAGE);
+    expect(courseImageUrl('http://localhost:8080/pluginfile.php/42/course/generated/course.svg')).toBe(DEFAULT_COURSE_IMAGE);
   });
 });

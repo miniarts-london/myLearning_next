@@ -1,6 +1,118 @@
-.page { min-height: 100vh; display: grid; place-items: center; background: var(--mui-palette-grey-100); padding: 2rem 1rem; }
+.page {
+  min-height: 100vh; display: grid; place-items: center; padding: 2rem 1rem;
+  /* Autumn: warm cream at the top deepening to soft amber and rust at the bottom. */
+  background: linear-gradient(170deg, #fffbf5 0%, #fcf0e0 35%, #f1cfa3 72%, #dc9a68 100%);
+  position: relative; overflow: hidden; isolation: isolate;
+}
 
-.card { width: 100%; max-width: 26rem; padding: 1.5rem; }
+/* Two soft, blurred glows (golden and russet) drifting slowly behind the card, with the falling
+   leaves on top. Decorative only; still for people who prefer reduced motion. */
+.page::before,
+.page::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 60vmax;
+  height: 60vmax;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: .3;
+  pointer-events: none;
+}
+.page::before {
+  top: -25vmax;
+  left: -15vmax;
+  background: radial-gradient(circle, #e9a23b, transparent 65%);
+  animation: drift-a 28s ease-in-out infinite alternate;
+}
+.page::after {
+  bottom: -30vmax;
+  right: -20vmax;
+  background: radial-gradient(circle, #a8431f, transparent 65%);
+  animation: drift-b 34s ease-in-out infinite alternate;
+}
+@keyframes drift-a {
+  from { transform: translate(0, 0) scale(1); }
+  to { transform: translate(18vw, 12vh) scale(1.15); }
+}
+@keyframes drift-b {
+  from { transform: translate(0, 0) scale(1.1); }
+  to { transform: translate(-16vw, -14vh) scale(.95); }
+}
+/* Sunbeams: soft rays of warm light coming in at an angle from the top left, slowly swinging and
+   brightening and fading, like sun through trees. A wide fan of stripes, faded out with a mask so
+   the rays are strongest near the corner and vanish across the page. */
+.sunbeams {
+  position: absolute;
+  z-index: -1;
+  /* A huge square centred just off the top-left corner: the "sun". Only the rays heading down and
+     to the right reach the page. */
+  width: 240vmax;
+  height: 240vmax;
+  top: calc(-120vmax - 18vh);
+  left: calc(-120vmax - 12vw);
+  pointer-events: none;
+  background: repeating-conic-gradient(from 0deg at 50% 50%,
+    rgba(255, 240, 200, .7) 0deg 2.5deg, transparent 2.5deg 7deg,
+    rgba(255, 246, 222, .5) 7deg 8.5deg, transparent 8.5deg 15deg);
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 8%, rgba(0, 0, 0, .5) 22%, transparent 40%);
+  mask-image: radial-gradient(circle at 50% 50%, #000 8%, rgba(0, 0, 0, .5) 22%, transparent 40%);
+  filter: blur(5px);
+  mix-blend-mode: soft-light;
+  transform-origin: 50% 50%;
+  animation: sun-sway 40s ease-in-out infinite alternate, sun-glow 13s ease-in-out infinite alternate;
+}
+@keyframes sun-sway {
+  from { transform: rotate(-4deg); }
+  to   { transform: rotate(6deg); }
+}
+@keyframes sun-glow {
+  from { opacity: .65; }
+  to   { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page::before, .page::after, .sunbeams { animation: none; }
+}
+
+/* ---- The "horses" scene (see SCENE in Login.tsx) ----------------------------------------------
+   Black and white: a pale grey sky, the photo of the herd on the horizon along the bottom, and the
+   falling leaves in shades of grey. The autumn colours, glows and sunbeams are switched off. */
+.horizon { display: none; }
+.horses {
+  background: linear-gradient(180deg, #f8f8f8 0%, #f3f3f3 60%, #eeeeee 100%);
+}
+.horses::before,
+.horses::after,
+.horses .sunbeams { display: none; }
+.horses .horizon {
+  display: block;
+  position: absolute;
+  z-index: -1;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* The height sets the horses' size. */
+  height: max(9vw, 80px);
+  /* The photo of the herd at the right (its edges already fade out: login-horses.png), and the dark
+     field continuing right across the screen from the photo's horizon (81% down) to the bottom. */
+  background:
+    url('/images/login-horses.png') right 3vw top / auto 100% no-repeat,
+    linear-gradient(180deg, transparent 81%, #1b1b1b 81%);
+  pointer-events: none;
+}
+.horses :global(.falling-leaves) { filter: grayscale(1) contrast(1.1); }
+.horses .card { background: rgba(255, 255, 255, .86); box-shadow: 0 1rem 3rem rgba(0, 0, 0, .15); }
+
+/* Frosted glass: a little see-through, with the background softly blurred behind it. White
+   enough that the form stays easy to read. */
+.card {
+  width: 100%; max-width: 26rem; padding: 1.5rem;
+  background: rgba(255, 255, 255, .72);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 1rem 3rem rgba(120, 60, 20, .12);
+}
 @media (min-width: 600px) {
   .card { padding: 2.5rem; }
 }

@@ -12,17 +12,23 @@ test.beforeEach(async ({ page, request }) => {
 const loaded = (img: import('@playwright/test').Locator) =>
   img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0);
 
-test("a course with no image shows Moodle's inline placeholder pattern", async ({ page }) => {
+test("courses without an uploaded image show the default picture", async ({ page }) => {
+  // Course 2 has Moodle's inline pattern, course 3 its generated pattern file: both count as no image.
   const img = page.getByRole('main').getByRole('article').filter({ hasText: 'Accessible Web Design' }).locator('img');
-  await expect(img).toHaveAttribute('src', /^data:image\/svg\+xml;base64,/);
+  await expect(img).toHaveAttribute('src', '/images/course-default.jpg');
   await expect.poll(() => loaded(img)).toBe(true);
+
+  await page.goto('/catalogue');
+  const horse = page.getByRole('main').getByRole('article').filter({ hasText: 'Horse Care Essentials' }).locator('img');
+  await expect(horse).toHaveAttribute('src', '/images/course-default.jpg');
+  await expect.poll(() => loaded(horse)).toBe(true);
 });
 
-test("Moodle's generated placeholder file is shown, through /api/file", async ({ page }) => {
-  await page.goto('/catalogue');
-  const img = page.getByRole('main').getByRole('article').filter({ hasText: 'Horse Care Essentials' }).locator('img');
-  await expect(img).toHaveAttribute('src', /^\/api\/file\?url=/);
-  await expect.poll(() => loaded(img)).toBe(true);
+test("Moodle's generated placeholder file can still be fetched through /api/file", async ({ page }) => {
+  const generated = `${MOODLE}/pluginfile.php/42/course/generated/course.svg`;
+  const response = await page.request.get(`/api/file?url=${encodeURIComponent(generated)}`);
+  expect(response.status()).toBe(200);
+  expect(response.headers()['content-type']).toBe('image/svg+xml');
 });
 
 test('an uploaded SVG is still a download, never shown as a page', async ({ page }) => {
