@@ -1,0 +1,16 @@
+/* The numbers above the table. */
+.summary { display: flex; flex-wrap: wrap; gap: 1rem 2.5rem; margin: 0 0 1.5rem; }
+.summary dt { color: var(--mui-palette-text-secondary); font-size: .875rem; }
+.summary dd { margin: 0; font-size: 1.75rem; font-weight: 300; }
+
+.notice { margin-bottom: 1rem; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .5rem; }
+
+.name { font-weight: 600; }
+
+/* The grading dialog */
+.label { display: block; color: var(--mui-palette-text-secondary); }
+.work { border-left: 4px solid var(--mui-palette-divider); padding-left: 1rem; margin: .5rem 0 1rem; max-height: 40vh; overflow-y: auto; }
+.files { margin: 0 0 1rem; padding-left: 1.25rem; }
+.gradeForm { display: grid; gap: 1rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--mui-palette-divider); }
+.gradeField { max-width: 14rem; }

@@ -152,6 +152,21 @@ export interface MoodleAssignment {
   submissionstatement?: string;       // The statement's text (newer Moodle versions send it)
   // Which submission types are switched on, e.g. { plugin: 'onlinetext', subtype: 'assignsubmission', name: 'enabled', value: '1' }
   configs: { plugin: string; subtype: string; name: string; value: string }[];
+  grade?: number; // Maximum points when > 0; a scale when < 0; 0 = not graded
+}
+
+// For teachers: every learner's submission to an assignment (mod_assign_get_submissions)…
+export interface MoodleSubmission {
+  userid: number;
+  status: string; // 'new', 'draft', 'submitted', 'reopened'
+  timemodified: number;
+  plugins?: AssignSubmissionPlugin[];
+}
+// …and their grades (mod_assign_get_grades).
+export interface MoodleGrade {
+  userid: number;
+  grade: string; // e.g. "7.00000"; "-1.00000" or "" when not graded
+  timemodified: number;
 }
 
 // From mod_assign_get_submission_status: where this learner's submission stands.

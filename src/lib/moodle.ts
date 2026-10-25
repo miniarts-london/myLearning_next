@@ -2,7 +2,7 @@ import 'server-only';
 import { cache } from 'react';
 import { decodeEntities, decodeNames } from './entities';
 import type {
-  ActivityCompletionStatus, CalendarEvent, CourseUser, MoodleConversation, MoodleConversationMember, MoodleMessage,
+  ActivityCompletionStatus, CalendarEvent, CourseUser, MoodleGrade, MoodleSubmission, MoodleConversation, MoodleConversationMember, MoodleMessage,
   AssignSubmissionStatus, CalendarActionEvent, Category, Course, CourseModuleInfo, MoodleWarning, CourseSection, EnrolledCourse, MoodleAssignment,
   MoodleException, MoodlePage, MoodleUrl, SiteInfo,
 } from './types';
@@ -228,6 +228,24 @@ export const moodle = {
   // "Upcoming events" block: the look-ahead and number come from the user's calendar settings.
   upcomingEvents: async (token: string) =>
     (await call<{ events: CalendarEvent[] }>(token, 'core_calendar_get_calendar_upcoming_view', {})).events,
+
+  // Marking (teachers) -------------------------------------------------------------------
+  submissions: async (token: string, assignmentid: number) =>
+    (await call<{ assignments: { assignmentid: number; submissions: MoodleSubmission[] }[] }>(token, 'mod_assign_get_submissions', {
+      assignmentids: [assignmentid],
+    })).assignments[0]?.submissions ?? [],
+
+  grades: async (token: string, assignmentid: number) =>
+    (await call<{ assignments: { assignmentid: number; grades: MoodleGrade[] }[] }>(token, 'mod_assign_get_grades', {
+      assignmentids: [assignmentid],
+    })).assignments[0]?.grades ?? [],
+
+  // Saves a grade (points) and a feedback comment for one learner. Moodle checks the user may grade.
+  saveGrade: (token: string, assignmentid: number, userid: number, grade: number, feedback: string) =>
+    call<null>(token, 'mod_assign_save_grade', {
+      assignmentid, userid, grade, attemptnumber: -1, addattempt: false, workflowstate: '', applytoall: true,
+      plugindata: { assignfeedbackcomments_editor: { text: feedback, format: 2 } }, // 2 = plain text
+    }),
 
   setManualCompletion: (token: string, cmid: number, completed: boolean) =>
     call<{ status: boolean }>(token, 'core_completion_update_activity_completion_status_manually', { cmid, completed }),

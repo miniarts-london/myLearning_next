@@ -28,10 +28,11 @@ interface CourseScreenProps {
   progress: number | null;          // 0–100, or null when nothing is tracked
   moodleCourseUrl: string;          // Where to enrol, in Moodle
   learnersHref?: string;            // Only for the course's teachers and site admins
+  forLearner?: boolean;             // false for the course's teachers: no "Mark as done" buttons
   canRequestAccess?: boolean;       // Not enrolled: "contact the admin" instead of a link to Moodle
 }
 
-export function CourseScreen({ course, sections, progress, moodleCourseUrl, learnersHref, canRequestAccess }: CourseScreenProps) {
+export function CourseScreen({ course, sections, progress, moodleCourseUrl, learnersHref, canRequestAccess, forLearner = true }: CourseScreenProps) {
   return (
     <>
       <Breadcrumbs className={common.breadcrumbs}>
@@ -71,7 +72,7 @@ export function CourseScreen({ course, sections, progress, moodleCourseUrl, lear
               <SafeHtml html={section.summary} className="summary" />
               <List disablePadding className={styles.activities}>
                 {section.modules.map((m) => (
-                  <Activity key={m.id} module={m} courseid={course.id} />
+                  <Activity key={m.id} module={m} courseid={course.id} forLearner={forLearner} />
                 ))}
               </List>
             </section>
@@ -82,7 +83,7 @@ export function CourseScreen({ course, sections, progress, moodleCourseUrl, lear
   );
 }
 
-function Activity({ module: m, courseid }: { module: CourseModule; courseid: number }) {
+function Activity({ module: m, courseid, forLearner }: { module: CourseModule; courseid: number; forLearner: boolean }) {
   const complete = (m.completiondata?.state ?? 0) > 0;
   const isLabel = m.modname === 'label';
   return (
@@ -107,7 +108,7 @@ function Activity({ module: m, courseid }: { module: CourseModule; courseid: num
             slotProps={{ secondary: { variant: 'overline' } }}
           />
         )}
-        <CompletionButton module={m} courseid={courseid} size="small" />
+        {forLearner && <CompletionButton module={m} courseid={courseid} size="small" />}
       </ListItem>
     </Paper>
   );

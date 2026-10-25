@@ -4,6 +4,7 @@ import { connection } from 'next/server';
 import { moodle, MoodleError } from './moodle';
 import { isComplete, isStaff, type LearnerRow } from './learners';
 import { adminUserIds } from './accessRequest.server';
+import type { CourseUser } from './types';
 
 // Whether this user may see the learners of this course: site admins (any course), and
 // teachers and managers enrolled in it. Checked on the server for every request.
@@ -46,10 +47,18 @@ async function mapLimit<T, R>(items: T[], limit: number, task: (item: T) => Prom
 // person looking and site admins (both may be enrolled as students to try a course out).
 // `trackedCmids`: the activities learners see that have completion tracking, so progress here
 // matches what each learner sees on their own course page.
-export async function courseLearners(token: string, courseid: number, trackedCmids: number[], viewerId: number): Promise<LearnerRow[]> {
+// The course's learners: people with the student role, leaving out the person looking and site
+// admins (both may be enrolled as students to try a course out). Sorted by name.
+export async function courseStudents(token: string, courseid: number, viewerId: number): Promise<CourseUser[]> {
   const people = await moodle.enrolledUsers(token, courseid);
   const admins = adminUserIds();
-  const learners = people.filter((p) => p.id !== viewerId && !admins.has(p.id) && p.roles?.some((r) => r.shortname === 'student'));
+  return people
+    .filter((p) => p.id !== viewerId && !admins.has(p.id) && p.roles?.some((r) => r.shortname === 'student'))
+    .toSorted((a, b) => a.fullname.localeCompare(b.fullname, 'en-GB'));
+}
+
+export async function courseLearners(token: string, courseid: number, trackedCmids: number[], viewerId: number): Promise<LearnerRow[]> {
+  const learners = await courseStudents(token, courseid, viewerId);
   const tracked = new Set(trackedCmids);
 
   // One Moodle call per learner, a few at a time, so a big class doesn't flood Moodle.

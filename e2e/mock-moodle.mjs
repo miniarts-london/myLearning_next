@@ -112,6 +112,15 @@ const events = () => {
 let calendarDown = false;
 let messages = []; // Moodle messages sent through the app (GET /__messages shows them)
 
+// Other learners' submissions to the assignment, and grades (for the teachers' Submissions page).
+const OTHER_SUBMISSIONS = {
+  21: { status: 'submitted', text: '<p>I checked the <strong>contrast</strong>, headings and alt text.</p><script>alert(1)</script>', ago: 2 },
+  22: { status: 'draft', text: '<p>Started on the headings…</p>', ago: 1 },
+  23: { status: 'submitted', text: '<p>All five criteria checked.</p>', ago: 5 },
+};
+const newGrades = () => ({ 23: { grade: 8, feedback: 'Thorough work.' } });
+let grades = newGrades();
+
 // Conversations (Moodle messaging). Conversation 1: Sam (student) and Tess (teacher).
 const NAMES = { 2: 'Ada Admin', 5: 'Sam Student', 7: 'Tess Teacher', 21: 'Priya Shah', 22: 'Tom Okafor', 23: 'Lena Fischer', 24: 'Ben Carter' };
 const newConversations = () => {
@@ -198,7 +207,7 @@ function webService(fn, p, user) {
       return { courses: [{ assignments: [{
         id: 1, cmid: 13, name: 'Assignment: Accessibility audit', intro: '<p>Audit a web page against five WCAG criteria.</p>',
         duedate: Math.floor(Date.now() / 1000) + 4 * 86400, cutoffdate: 0,
-        submissiondrafts: 1, requiresubmissionstatement: 1, submissionstatement: STATEMENT,
+        submissiondrafts: 1, requiresubmissionstatement: 1, submissionstatement: STATEMENT, grade: 10,
         configs: [
           { plugin: 'onlinetext', subtype: 'assignsubmission', name: 'enabled', value: '1' },
           { plugin: 'file', subtype: 'assignsubmission', name: 'enabled', value: '1' },
@@ -216,6 +225,25 @@ function webService(fn, p, user) {
           canedit: !submitted, cansubmit: submission.status === 'draft',
         },
       };
+    }
+    case 'mod_assign_get_submissions': {
+      if (isStudent) return exception('nopermissions', 'Sorry, but you do not currently have permissions to do that (View all submissions).');
+      const now = Math.floor(Date.now() / 1000);
+      const subs = Object.entries(OTHER_SUBMISSIONS).map(([userid, x]) => ({
+        userid: Number(userid), status: x.status, timemodified: now - x.ago * 86400,
+        plugins: [{ type: 'onlinetext', editorfields: [{ name: 'onlinetext', text: x.text, format: 1 }] }, { type: 'file', fileareas: [{ area: 'submission_files', files: [] }] }],
+      }));
+      subs.push({ userid: 5, status: submission.status, timemodified: submission.timemodified,
+        plugins: [{ type: 'onlinetext', editorfields: [{ name: 'onlinetext', text: submission.html, format: 1 }] }] });
+      return { assignments: [{ assignmentid: 1, submissions: subs }], warnings: [] };
+    }
+    case 'mod_assign_get_grades':
+      if (isStudent) return exception('nopermissions', 'Sorry, but you do not currently have permissions to do that (Grade).');
+      return { assignments: [{ assignmentid: 1, grades: Object.entries(grades).map(([userid, g]) => ({ userid: Number(userid), grade: g.grade.toFixed(5), timemodified: 0 })) }], warnings: [] };
+    case 'mod_assign_save_grade': {
+      if (isStudent) return exception('nopermissions', 'Sorry, but you do not currently have permissions to do that (Grade).');
+      grades[Number(p.get('userid'))] = { grade: Number(p.get('grade')), feedback: p.get('plugindata[assignfeedbackcomments_editor][text]') ?? '' };
+      return null;
     }
     case 'mod_assign_save_submission': {
       if (submission.status === 'submitted') return [{ item: 'assignment', warningcode: 'couldnotsavesubmission', message: 'This submission has already been submitted for grading and cannot be changed.' }];
@@ -292,7 +320,8 @@ http.createServer((req, res) => {
     const json = (data) => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(data)); };
     const url = req.url ?? '';
 
-    if (url.startsWith('/__reset')) { done = new Set(INITIAL_DONE); calendarDown = false; submission = newSubmission(); messages = []; conversations = newConversations(); return json({ ok: true }); }
+    if (url.startsWith('/__reset')) { done = new Set(INITIAL_DONE); calendarDown = false; submission = newSubmission(); messages = []; conversations = newConversations(); grades = newGrades(); return json({ ok: true }); }
+    if (url.startsWith('/__grades')) return json(grades);
     if (url.startsWith('/__messages')) return json(messages);
     if (url.startsWith('/__reply')) { // POST /__reply?text=…: Tess replies to Sam in conversation 1
       conversations[0].messages.push({ id: nextMessageId++, useridfrom: 7, text: new URL(url, BASE).searchParams.get('text') ?? 'Hello', timecreated: Math.floor(Date.now() / 1000) });

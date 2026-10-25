@@ -57,6 +57,7 @@ async function CourseContent({ params }: Props) {
       moodleCourseUrl={moodleUrl(`/course/view.php?id=${courseid}`)}
       learnersHref={staff ? `/courses/${courseid}/learners` : undefined}
       canRequestAccess={!staff}
+      forLearner={!teaches}
     />
   );
 }

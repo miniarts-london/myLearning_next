@@ -22,3 +22,6 @@
 
 .due { margin-bottom: 1rem; font-weight: 600; }
 .alertGap { margin-top: 1rem; }
+
+/* Teachers on an assignment: Submissions, and Moodle's grader. */
+.teacherActions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin-top: 1rem; }

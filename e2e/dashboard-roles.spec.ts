@@ -39,3 +39,20 @@ test("a learner's Up next still shows their deadlines, not calendar events", asy
   await expect(section).toContainText('Use the right element'); // An overdue deadline
   await expect(section).not.toContainText('Live Q&A session');
 });
+
+test("teachers don't get a learner's submission box or Mark as done buttons", async ({ page }) => {
+  await loginAs(page, 'teacher');
+  await page.goto('/courses/2/activities/13'); // The assignment
+  await expect(page.getByRole('heading', { level: 1, name: 'Assignment: Accessibility audit' })).toBeVisible();
+  await expect(page.getByText('Audit a web page against five WCAG criteria.')).toBeVisible(); // The assignment itself still shows
+  await expect(page.getByRole('region', { name: 'Your submission' })).toHaveCount(0);
+  // Instead: a link to Moodle's grading page for this assignment, in a new tab.
+  const grade = page.getByRole('link', { name: /View and grade submissions/ });
+  await expect(grade).toHaveAttribute('href', /\/mod\/assign\/view\.php\?id=13&action=grading$/);
+  await expect(grade).toHaveAttribute('target', '_blank');
+  await expect(page.getByRole('button', { name: /Mark as done|Done/ })).toHaveCount(0);
+
+  await page.goto('/courses/2');
+  await expect(page.getByRole('heading', { level: 1, name: 'Accessible Web Design' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Mark as done|Done/ })).toHaveCount(0);
+});

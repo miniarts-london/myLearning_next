@@ -21,7 +21,7 @@ import common from '@/css/common.module.css';
 export type ActivityDetail =
   | { kind: 'page'; intro: string; content: string }
   | { kind: 'url'; intro: string; externalurl: string }
-  | { kind: 'assign'; intro: string; duedate: number; moodleUrl: string; submission: AssignmentView | null }
+  | { kind: 'assign'; intro: string; duedate: number; moodleUrl: string; submission: AssignmentView | null; forLearner: boolean }
   | { kind: 'other'; modname: string; moodleUrl: string }; // Not built in this app yet
 
 interface ActivityScreenProps {
@@ -30,9 +30,10 @@ interface ActivityScreenProps {
   detail: ActivityDetail;
   prev?: CourseModule;
   next?: CourseModule;
+  forLearner?: boolean; // false for the course's teachers: no "Mark as done" or "Your submission"
 }
 
-export function ActivityScreen({ course, activity, detail, prev, next }: ActivityScreenProps) {
+export function ActivityScreen({ course, activity, detail, prev, next, forLearner = true }: ActivityScreenProps) {
   return (
     <>
       <Breadcrumbs className={common.breadcrumbs}>
@@ -42,12 +43,14 @@ export function ActivityScreen({ course, activity, detail, prev, next }: Activit
       <Typography variant="h1" className={common.pageTitle}>{activity.name}</Typography>
 
       <Box component="article" className={styles.article}>
-        <ActivityBody detail={detail} courseid={course.id} />
+        <ActivityBody detail={detail} courseid={course.id} cmid={activity.id} />
       </Box>
 
-      <Box className={styles.completion}>
-        <CompletionButton module={activity} courseid={course.id} />
-      </Box>
+      {forLearner && (
+        <Box className={styles.completion}>
+          <CompletionButton module={activity} courseid={course.id} />
+        </Box>
+      )}
 
       <Divider className={styles.divider} />
       <Box component="nav" aria-label="Activities in this course" className={styles.pager}>
@@ -79,7 +82,7 @@ function PagerLink({ href, rel, label, name }: { href: string; rel: 'prev' | 'ne
   );
 }
 
-function ActivityBody({ detail, courseid }: { detail: ActivityDetail; courseid: number }) {
+function ActivityBody({ detail, courseid, cmid }: { detail: ActivityDetail; courseid: number; cmid: number }) {
   switch (detail.kind) {
     case 'page':
       return (
@@ -110,7 +113,18 @@ function ActivityBody({ detail, courseid }: { detail: ActivityDetail; courseid: 
             </Alert>
           )}
           <SafeHtml html={detail.intro} className="prose" />
-          {detail.submission ? (
+          {!detail.forLearner ? (
+            // Teachers: the Submissions page here, or Moodle's own grader (for rubrics, scales…).
+            <div className={styles.teacherActions}>
+              <Button href={`/courses/${courseid}/activities/${cmid}/submissions`} variant="contained" color="primary">
+                Submissions
+              </Button>
+              <Button component="a" href={gradingUrl(detail.moodleUrl)} target="_blank" rel="noopener noreferrer"
+                color="secondary" endIcon={<OpenInNewIcon />}>
+                View and grade submissions in Moodle<span className="visually-hidden"> (opens in a new tab)</span>
+              </Button>
+            </div>
+          ) : detail.submission ? (
             <AssignmentSubmission view={detail.submission} courseid={courseid} moodleUrl={detail.moodleUrl}
               submittedText={<SafeHtml html={detail.submission.html} className="prose" />}
               feedback={detail.submission.feedbackHtml && <SafeHtml html={detail.submission.feedbackHtml} className="prose" />} />
@@ -131,6 +145,17 @@ function ActivityBody({ detail, courseid }: { detail: ActivityDetail; courseid: 
 }
 
 // The few links that still go to Moodle open in a new tab, so this app stays open behind them.
+// Moodle's grading table for an assignment: its page (mod/assign/view.php?id=…) with action=grading.
+function gradingUrl(assignmentUrl: string): string {
+  try {
+    const url = new URL(assignmentUrl);
+    url.searchParams.set('action', 'grading');
+    return url.toString();
+  } catch {
+    return assignmentUrl;
+  }
+}
+
 function MoodleButton({ href, children }: { href: string; children: React.ReactNode }) {
   return (
     <Button component="a" href={href} target="_blank" rel="noopener noreferrer" color="inherit" size="small" endIcon={<OpenInNewIcon />}>
