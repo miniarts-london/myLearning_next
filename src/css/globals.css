@@ -32,6 +32,12 @@ img { max-width: 100%; height: auto; }
 .activity__label > :last-child { margin-bottom: 0; }
 .category__description img { max-width: 72px; }
 
+/* The welcome animation after logging in (WelcomeIntro): the page stays hidden until the horse has
+   landed on the Assistant button, then fades in; the flying horse stands in for the button's icon. */
+[data-app-shell] { transition: opacity .7s ease; }
+:root[data-welcome] [data-app-shell] { opacity: 0; }
+:root[data-welcome] [data-assistant-fab-icon] { visibility: hidden; }
+
 @media (prefers-reduced-motion: reduce) {
   /* Delays too: otherwise a delayed step (like hiding the closed course index from the keyboard)
      would still wait for an animation that no longer happens. */

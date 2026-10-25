@@ -23,7 +23,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <a className="skip-link" href="#main">Skip to main content</a>
-      <AppBar component="header">
+      <AppBar component="header" data-app-shell>
         <Container maxWidth="lg">
           <Toolbar disableGutters className={styles.toolbar}>
             <Link href="/dashboard" underline="none" color="inherit" className={styles.brand}>
@@ -47,7 +47,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </Toolbar>
         </Container>
       </AppBar>
-      <Container component="main" id="main" maxWidth="lg" className={styles.main}>{children}</Container>
+      <Container component="main" id="main" maxWidth="lg" className={styles.main} data-app-shell>{children}</Container>
       {/* The assistant, on every logged-in page. <Suspense>: it reads the page address, which isn't
           known when the shell is prerendered. Only shown when a Claude API key is set. */}
       {assistantConfigured() && <Suspense fallback={null}><Assistant /></Suspense>}
@@ -62,7 +62,7 @@ async function Welcome() {
     return null;
   }
   const session = await verifySession();
-  return <WelcomeIntro firstname={session.firstname} />;
+  return <WelcomeIntro firstname={session.firstname} withAssistant={assistantConfigured()} />;
 }
 
 async function UserName() {

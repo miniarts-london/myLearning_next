@@ -39,7 +39,8 @@ export async function requestAccess(_previous: AccessRequestState, formData: For
     return { ok: true, message: "Your request has been sent to the administrator. You'll get access once they enrol you." };
   } catch (e) {
     if (e instanceof MoodleError) {
-      return { ok: false, message: "Your request couldn't be sent. Please try again later, or contact your administrator another way." };
+      // Include Moodle's reason: usually its messaging settings (see the README / setup notes).
+      return { ok: false, message: `Your request couldn't be sent. Moodle said: ${e.message}` };
     }
     throw e;
   }

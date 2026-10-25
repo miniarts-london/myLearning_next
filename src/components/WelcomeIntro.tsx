@@ -2,18 +2,24 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AssistantIcon } from '@/components/assistant/AssistantIcon';
-import { WELCOME_COOKIE } from '@/lib/welcome';
+import { setWelcoming, WELCOME_COOKIE } from '@/lib/welcome';
 import styles from '@/css/WelcomeIntro.module.css';
 
 // Plays once, right after logging in: "Welcome back, Sam" with the horse trotting in the middle of
-// the screen. Then the horse gallops off to become the Assistant button (bottom right), and the
-// page fades in behind it. Click or press any key to skip. Skipped entirely for people who prefer
-// reduced motion. Decorative: the page's own heading already says "Welcome back".
-const HELLO_MS = 1600; // How long the greeting stays before the horse sets off
-const FLY_MS = 900;    // The horse's trip to the Assistant button
-const FADE_MS = 700;   // The page fading in (it starts 400ms into the horse's trip)
+// an empty screen (the page is hidden meanwhile: see setWelcoming). Once the page behind has
+// finished loading, the greeting fades and the horse gallops off to become the Assistant button;
+// when it lands, the page fades in. Click or press any key to skip. Skipped entirely for people who
+// prefer reduced motion. Decorative: the page's own heading already says "Welcome back".
+const HELLO_MS = 1600;    // The greeting shows for at least this long…
+const MAX_WAIT_MS = 8000; // …and at most this long, however slow the page is to load
+const FLY_MS = 900;       // The horse's trip to the Assistant button
+const FADE_MS = 700;      // The page fading in, once the horse has landed (matches globals.css)
 
-export function WelcomeIntro({ firstname }: { firstname: string }) {
+const pageReady = () =>
+  Boolean(document.querySelector('main h1')) && !document.querySelector('main [data-loading]');
+const fabIcon = () => document.querySelector('[data-assistant-fab-icon]');
+
+export function WelcomeIntro({ firstname, withAssistant }: { firstname: string; withAssistant: boolean }) {
   const [phase, setPhase] = useState<'hello' | 'leaving' | 'done'>('hello');
   const horse = useRef<HTMLDivElement>(null);
 
@@ -23,31 +29,62 @@ export function WelcomeIntro({ firstname }: { firstname: string }) {
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
       return;
     }
+    setWelcoming(true);
     const skip = () => setPhase('done');
     window.addEventListener('keydown', skip, { once: true });
 
-    const timer = setTimeout(() => {
+    const started = performance.now();
+    let timer: ReturnType<typeof setTimeout>;
+    let cancelled = false;
+
+    // Wait for the greeting's minimum time, the page's content and the Assistant button (when
+    // there is one), so the horse leaves just as there's something to show.
+    const check = () => {
+      if (cancelled) return;
+      const waited = performance.now() - started;
+      const ready = pageReady() && (!withAssistant || fabIcon());
+      if (waited < HELLO_MS || (!ready && waited < MAX_WAIT_MS)) {
+        timer = setTimeout(check, 100);
+        return;
+      }
+      leave();
+    };
+
+    const leave = () => {
       setPhase('leaving');
-      // Fly to the Assistant button's icon, if there is one (it only shows when the assistant is set up).
       const from = horse.current?.getBoundingClientRect();
-      const to = document.querySelector('[data-assistant-fab-icon]')?.getBoundingClientRect();
+      const to = fabIcon()?.getBoundingClientRect();
       if (horse.current && from && to) {
         const dx = to.left + to.width / 2 - (from.left + from.width / 2);
         const dy = to.top + to.height / 2 - (from.top + from.height / 2);
         horse.current.animate(
           [{ transform: 'none' }, { transform: `translate(${dx * 0.5}px, ${dy * 0.35 - 60}px) scale(0.6)`, offset: 0.5 },
-            { transform: `translate(${dx}px, ${dy}px) scale(${to.width / from.width})`, opacity: 1 }],
+            { transform: `translate(${dx}px, ${dy}px) scale(${to.width / from.width})` }],
           { duration: FLY_MS, easing: 'cubic-bezier(0.5, 0, 0.3, 1)', fill: 'forwards' },
         );
+      } else {
+        horse.current?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'forwards' });
       }
-      setTimeout(() => setPhase('done'), Math.max(FLY_MS, 400 + FADE_MS));
-    }, HELLO_MS);
+      // Landed: the page fades in (and the button shows its own horse again), then the intro goes.
+      timer = setTimeout(() => {
+        setWelcoming(false);
+        timer = setTimeout(() => setPhase('done'), FADE_MS);
+      }, FLY_MS);
+    };
 
+    timer = setTimeout(check, 100);
     return () => {
+      cancelled = true;
       clearTimeout(timer);
       window.removeEventListener('keydown', skip);
+      setWelcoming(false);
     };
-  }, []);
+  }, [withAssistant]);
+
+  // The horse has landed (or the intro was skipped): show the button's own horse again.
+  useEffect(() => {
+    if (phase === 'done') setWelcoming(false);
+  }, [phase]);
 
   if (phase === 'done') return null;
   return (

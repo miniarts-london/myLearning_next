@@ -4,7 +4,8 @@ import Typography from '@mui/material/Typography';
 import { LoginForm } from '@/app/login/LoginForm';
 import styles from '@/css/Login.module.css';
 
-export function LoginScreen({ demos = [] }: { demos?: ('teacher' | 'student')[] }) {
+// `demo`: the "Or try a demo" buttons, when the page has any (streamed in after the form).
+export function LoginScreen({ demo }: { demo?: React.ReactNode }) {
   return (
     <Box component="main" className={styles.page}>
       <Paper component="section" aria-labelledby="login-title" elevation={0} className={styles.card}>
@@ -12,7 +13,8 @@ export function LoginScreen({ demos = [] }: { demos?: ('teacher' | 'student')[] 
           <Typography component="span" className={styles.welcome}>Welcome to</Typography>
           MyLearning
         </Typography>
-        <LoginForm demos={demos} />
+        <LoginForm />
+        {demo}
         <Typography variant="body2" className={styles.hint}>
           Use your Moodle username and password.
         </Typography>

@@ -1,4 +1,4 @@
-/* Covers the page while the greeting plays; the page "fades in" as this fades out. */
+/* Sits over the (hidden) page while the greeting plays. */
 .overlay {
   position: fixed;
   inset: 0;
@@ -7,12 +7,10 @@
   place-content: center;
   justify-items: center;
   gap: 1rem;
-  background: var(--mui-palette-background-default);
-  transition: background-color var(--fade) ease;
   cursor: pointer;
 }
-/* Leaving: the greeting fades, the horse flies to the Assistant button, and then the page fades in. */
-.leaving { background-color: transparent; pointer-events: none; transition-delay: .4s; }
+/* Leaving: the greeting fades and the horse flies to the Assistant button. */
+.leaving { pointer-events: none; }
 
 .horse { width: 120px; height: 120px; animation: arrive .6s cubic-bezier(.2, .8, .3, 1.2) both; }
 .icon { width: 100%; height: 100%; color: var(--mui-palette-primary-main); }
