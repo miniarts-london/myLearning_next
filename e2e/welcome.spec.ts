@@ -37,6 +37,24 @@ test.describe('with animation allowed', () => {
     await expect(page.locator('p', { hasText: 'Welcome back, Sam' })).toHaveCount(0);
   });
 
+  test("the page stays hidden until the horse has landed, even if the server re-renders the page", async ({ page }) => {
+    await page.goto('/login');
+    await page.getByRole('button', { name: 'Student' }).click();
+    const intro = page.locator('p', { hasText: 'Welcome back, Sam' });
+    await expect(intro).toBeVisible();
+    // What production does right after logging in: Next.js fetches the page from the server again.
+    await page.evaluate(() => (window as unknown as { next: { router: { refresh: () => void } } }).next.router.refresh());
+    await page.waitForTimeout(800);
+    await expect(intro).toBeVisible(); // Still playing…
+    expect(await page.locator('header').evaluate((el) => getComputedStyle(el).opacity)).toBe('0'); // …and the page still hidden
+    // Then it finishes: the page appears, and the intro doesn't come back.
+    await expect(intro).toHaveCount(0, { timeout: 8000 });
+    await expect.poll(() => page.locator('header').evaluate((el) => getComputedStyle(el).opacity)).toBe('1');
+    await page.evaluate(() => (window as unknown as { next: { router: { refresh: () => void } } }).next.router.refresh());
+    await page.waitForTimeout(800);
+    await expect(intro).toHaveCount(0);
+  });
+
   test('clicking skips the welcome', async ({ page }) => {
     await login(page);
     const intro = page.locator('p', { hasText: 'Welcome back, Sam' });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { AssistantIcon } from '@/components/assistant/AssistantIcon';
 import { setWelcoming, WELCOME_COOKIE } from '@/lib/welcome';
 import styles from '@/css/WelcomeIntro.module.css';
@@ -19,14 +19,23 @@ const pageReady = () =>
   Boolean(document.querySelector('main h1')) && !document.querySelector('main [data-loading]');
 const fabIcon = () => document.querySelector('[data-assistant-fab-icon]');
 
+// Whether the welcome is due: the cookie set at login. Read in the browser, so a later re-render of
+// the page from the server (which Next.js may do right after logging in) can't cut the intro short.
+// The cookie is only cleared once the intro has finished.
+const isDue = () => document.cookie.split('; ').includes(`${WELCOME_COOKIE}=1`);
+const clearDue = () => { document.cookie = `${WELCOME_COOKIE}=; path=/; max-age=0`; };
+const noSubscribe = () => () => {};
+
 export function WelcomeIntro({ firstname, withAssistant }: { firstname: string; withAssistant: boolean }) {
+  const due = useSyncExternalStore(noSubscribe, isDue, () => false);
   const [phase, setPhase] = useState<'hello' | 'leaving' | 'done'>('hello');
   const horse = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    document.cookie = `${WELCOME_COOKIE}=; path=/; max-age=0`; // Only once
-    // Reduced motion: the CSS keeps the overlay hidden; nothing to play.
+    if (!due) return;
+    // Reduced motion: no intro (the CSS keeps the overlay hidden); just mark it as seen.
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      clearDue();
       return;
     }
     setWelcoming(true);
@@ -79,14 +88,18 @@ export function WelcomeIntro({ firstname, withAssistant }: { firstname: string; 
       window.removeEventListener('keydown', skip);
       setWelcoming(false);
     };
-  }, [withAssistant]);
+  }, [due, withAssistant]);
 
-  // The horse has landed (or the intro was skipped): show the button's own horse again.
+  // The horse has landed (or the intro was skipped): show the page and the button's own horse
+  // again, and mark the welcome as seen so it doesn't play on the next page.
   useEffect(() => {
-    if (phase === 'done') setWelcoming(false);
+    if (phase === 'done') {
+      setWelcoming(false);
+      clearDue();
+    }
   }, [phase]);
 
-  if (phase === 'done') return null;
+  if (!due || phase === 'done') return null;
   return (
     <div className={phase === 'leaving' ? `${styles.overlay} ${styles.leaving}` : styles.overlay}
       aria-hidden onClick={() => setPhase('done')}

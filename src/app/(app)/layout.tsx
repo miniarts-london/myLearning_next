@@ -12,8 +12,7 @@ import { NavLinks, NavLinksFallback } from '@/components/NavLinks';
 import { Assistant } from '@/components/assistant/Assistant';
 import { Messages } from '@/components/messages/Messages';
 import { WelcomeIntro } from '@/components/WelcomeIntro';
-import { WELCOME_COOKIE, WELCOME_EARLY_SCRIPT } from '@/lib/welcome';
-import { cookies } from 'next/headers';
+import { WELCOME_EARLY_SCRIPT } from '@/lib/welcome';
 import { assistantConfigured } from '@/lib/agent/config';
 import styles from '@/css/AppLayout.module.css';
 
@@ -61,10 +60,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Always rendered for a logged-in user; WelcomeIntro itself checks (in the browser) whether the
+// welcome is due, so re-rendering this from the server can never interrupt it.
 async function Welcome() {
-  if (!(await cookies()).get(WELCOME_COOKIE)) {
-    return null;
-  }
   const session = await verifySession();
   return <WelcomeIntro firstname={session.firstname} withAssistant={assistantConfigured()} />;
 }
