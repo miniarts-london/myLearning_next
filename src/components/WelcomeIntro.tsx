@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { AssistantIcon } from '@/components/assistant/AssistantIcon';
-import { setWelcoming, WELCOME_COOKIE } from '@/lib/welcome';
+import { setWelcoming, WELCOME_COOKIE, welcomeName } from '@/lib/welcome';
 import styles from '@/css/WelcomeIntro.module.css';
 
 // Plays once, right after logging in: "Welcome back, Sam" with the horse trotting in the middle of
@@ -19,15 +19,23 @@ const pageReady = () =>
   Boolean(document.querySelector('main h1')) && !document.querySelector('main [data-loading]');
 const fabIcon = () => document.querySelector('[data-assistant-fab-icon]');
 
-// Whether the welcome is due: the cookie set at login. Read in the browser, so a later re-render of
-// the page from the server (which Next.js may do right after logging in) can't cut the intro short.
-// The cookie is only cleared once the intro has finished.
-const isDue = () => document.cookie.split('; ').includes(`${WELCOME_COOKIE}=1`);
+// Whether the welcome is due, and for whom: the cookie set at login, read in the browser. This
+// component sits in the page's frame (rendered straight away, like the Assistant button), so it
+// never waits for, or is interrupted by, anything the server streams in later. The cookie is only
+// cleared once the intro has finished.
 const clearDue = () => { document.cookie = `${WELCOME_COOKIE}=; path=/; max-age=0`; };
 const noSubscribe = () => () => {};
 
-export function WelcomeIntro({ firstname, withAssistant }: { firstname: string; withAssistant: boolean }) {
-  const due = useSyncExternalStore(noSubscribe, isDue, () => false);
+// Where the Assistant button's icon sits (bottom right; see Assistant.module.css), for when the
+// horse sets off before the button is on the page.
+function fabIconSpot(): DOMRect {
+  const edge = window.innerWidth < 600 ? 16 : 24;
+  return new DOMRect(window.innerWidth - edge - 125, window.innerHeight - edge - 36, 24, 24);
+}
+
+export function WelcomeIntro({ withAssistant }: { withAssistant: boolean }) {
+  const firstname = useSyncExternalStore(noSubscribe, welcomeName, () => null);
+  const due = firstname !== null;
   const [phase, setPhase] = useState<'hello' | 'leaving' | 'done'>('hello');
   const horse = useRef<HTMLDivElement>(null);
 
@@ -62,7 +70,8 @@ export function WelcomeIntro({ firstname, withAssistant }: { firstname: string; 
     const leave = () => {
       setPhase('leaving');
       const from = horse.current?.getBoundingClientRect();
-      const to = fabIcon()?.getBoundingClientRect();
+      // The button's icon, or (if the button isn't on the page yet) the spot where it will be.
+      const to = fabIcon()?.getBoundingClientRect() ?? (withAssistant ? fabIconSpot() : undefined);
       if (horse.current && from && to) {
         const dx = to.left + to.width / 2 - (from.left + from.width / 2);
         const dy = to.top + to.height / 2 - (from.top + from.height / 2);

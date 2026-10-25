@@ -40,7 +40,7 @@ async function signIn(username: string, password: string, keepUsername = true): 
     await createSession({ token, userid: me.userid, firstname: me.firstname, fullname: me.fullname });
     // Play the welcome animation once, on the first page after logging in. Not a secret, so the
     // page's script may read and clear it; it expires by itself after a minute anyway.
-    (await cookies()).set(WELCOME_COOKIE, '1', { path: '/', maxAge: 60, sameSite: 'lax' });
+    (await cookies()).set(WELCOME_COOKIE, encodeURIComponent(me.firstname || 'there'), { path: '/', maxAge: 60, sameSite: 'lax' });
   } catch (e) {
     const message = e instanceof MoodleError ? e.message : 'Moodle could not be reached. Try again in a moment.';
     return { error: message, username: keepUsername ? username : undefined };

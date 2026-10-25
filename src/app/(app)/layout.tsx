@@ -55,16 +55,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           known when the shell is prerendered. Only shown when a Claude API key is set. */}
       {assistantConfigured() && <Suspense fallback={null}><Assistant /></Suspense>}
       {/* Right after logging in: a short welcome with the horse (see WelcomeIntro). */}
-      <Suspense fallback={null}><Welcome /></Suspense>
+      <WelcomeIntro withAssistant={assistantConfigured()} />
     </>
   );
-}
-
-// Always rendered for a logged-in user; WelcomeIntro itself checks (in the browser) whether the
-// welcome is due, so re-rendering this from the server can never interrupt it.
-async function Welcome() {
-  const session = await verifySession();
-  return <WelcomeIntro firstname={session.firstname} withAssistant={assistantConfigured()} />;
 }
 
 async function UserName() {
