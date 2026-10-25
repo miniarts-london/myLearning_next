@@ -1,4 +1,4 @@
-// "Ask for access" to a course you aren't enrolled in: shared rules, kept free of server code.
+// "Contact the admin" about a course you aren't enrolled in: shared rules, kept free of server code.
 
 export const ACCESS_NOTE_MAX = 500;
 

@@ -26,6 +26,28 @@ export interface CourseUser {
   lastcourseaccess?: number; // Unix seconds; 0 or missing = never
 }
 
+// Moodle messaging (core_message_*).
+export interface MoodleConversationMember {
+  id: number;
+  fullname: string;
+  isonline?: boolean | null;
+}
+export interface MoodleMessage {
+  id: number;
+  useridfrom: number;
+  text: string;        // HTML
+  timecreated: number; // Unix seconds
+}
+export interface MoodleConversation {
+  id: number;
+  name?: string;
+  type: number; // 1 one-to-one, 2 group, 3 "personal space" (just you)
+  isread?: boolean;
+  unreadcount?: number | null;
+  members: MoodleConversationMember[];
+  messages: MoodleMessage[];
+}
+
 // One activity's completion for one user (core_completion_get_activities_completion_status).
 export interface ActivityCompletionStatus {
   cmid: number;

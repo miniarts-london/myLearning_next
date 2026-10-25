@@ -4,7 +4,7 @@ import Typography from '@mui/material/Typography';
 import { LoginForm } from '@/app/login/LoginForm';
 import styles from '@/css/Login.module.css';
 
-export function LoginScreen() {
+export function LoginScreen({ demos = [] }: { demos?: ('teacher' | 'student')[] }) {
   return (
     <Box component="main" className={styles.page}>
       <Paper component="section" aria-labelledby="login-title" elevation={0} className={styles.card}>
@@ -12,7 +12,7 @@ export function LoginScreen() {
           <Typography component="span" className={styles.welcome}>Welcome to</Typography>
           MyLearning
         </Typography>
-        <LoginForm />
+        <LoginForm demos={demos} />
         <Typography variant="body2" className={styles.hint}>
           Use your Moodle username and password.
         </Typography>

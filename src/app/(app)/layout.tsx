@@ -10,6 +10,10 @@ import { verifySession } from '@/lib/dal';
 import { logout } from '../login/actions';
 import { NavLinks, NavLinksFallback } from '@/components/NavLinks';
 import { Assistant } from '@/components/assistant/Assistant';
+import { Messages } from '@/components/messages/Messages';
+import { WelcomeIntro } from '@/components/WelcomeIntro';
+import { WELCOME_COOKIE } from '@/lib/welcome';
+import { cookies } from 'next/headers';
 import { assistantConfigured } from '@/lib/agent/config';
 import styles from '@/css/AppLayout.module.css';
 
@@ -34,6 +38,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <Suspense fallback={<Typography variant="body2" aria-hidden="true">&nbsp;</Typography>}>
                 <UserName />
               </Suspense>
+              {/* Messages: a client component; <Suspense> so the prerendered shell doesn't wait for it. */}
+              <Suspense fallback={null}><Messages /></Suspense>
               <form action={logout}>
                 <Button type="submit" variant="outlined" color="secondary" size="small" startIcon={<LogoutIcon />}>Log out</Button>
               </form>
@@ -45,8 +51,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* The assistant, on every logged-in page. <Suspense>: it reads the page address, which isn't
           known when the shell is prerendered. Only shown when a Claude API key is set. */}
       {assistantConfigured() && <Suspense fallback={null}><Assistant /></Suspense>}
+      {/* Right after logging in: a short welcome with the horse (see WelcomeIntro). */}
+      <Suspense fallback={null}><Welcome /></Suspense>
     </>
   );
+}
+
+async function Welcome() {
+  if (!(await cookies()).get(WELCOME_COOKIE)) {
+    return null;
+  }
+  const session = await verifySession();
+  return <WelcomeIntro firstname={session.firstname} />;
 }
 
 async function UserName() {

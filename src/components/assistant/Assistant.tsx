@@ -117,7 +117,7 @@ export function Assistant() {
   return (
     <>
       <Fab variant="extended" color="primary" onClick={() => setOpen(true)} aria-haspopup="dialog" className={styles.fab}>
-        <AssistantIcon className={styles.fabIcon} /> Assistant
+        <AssistantIcon className={styles.fabIcon} motion="idle" data-assistant-fab-icon /> Assistant
       </Fab>
 
       <Drawer anchor="right" open={open} onClose={() => setOpen(false)}
@@ -126,7 +126,7 @@ export function Assistant() {
         onClick={(e) => { if ((e.target as HTMLElement).closest('a')) setOpen(false); }}>
         <Stack direction="row" className={styles.header}>
           <Typography id="assistant-title" variant="h2" className={styles.title}>
-            <AssistantIcon className={styles.titleIcon} aria-hidden /> Assistant
+            <AssistantIcon className={styles.titleIcon} motion={busy ? 'busy' : 'idle'} aria-hidden /> Assistant
             <span className={styles.name}>({ASSISTANT_NAME})</span>
           </Typography>
           <IconButton onClick={() => setOpen(false)} aria-label="Close"><CloseIcon /></IconButton>

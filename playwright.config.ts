@@ -62,6 +62,10 @@ export default defineConfig({
         MOODLE_SERVICE: 'moodle_mobile_app',
         MOODLE_SUPPORT_USERID: '2',             // "Ask for access" requests go to the mock's admin
         ACCESS_REQUEST_COOLDOWN_SECONDS: '0',   // No once-a-day limit, so tests (and retries) can repeat
+        DEMO_TEACHER_USERNAME: 'teacher',       // The login page's demo buttons (mock accounts)
+        DEMO_TEACHER_PASSWORD: 'secret',
+        DEMO_STUDENT_USERNAME: 'student',
+        DEMO_STUDENT_PASSWORD: 'secret',
         SESSION_SECRET: 'e2e-tests-only-not-a-real-secret-0123456789',
         AI_SERVICE_URL: `http://localhost:${AI_PORT}`,
         AI_SERVICE_TOKEN: 'e2e-ai-token',

@@ -1,0 +1,41 @@
+.paper { width: min(420px, 100vw); display: flex; flex-direction: column; }
+
+.header { display: flex; align-items: center; justify-content: space-between; gap: .25rem; padding: .75rem .75rem .75rem 1.25rem; border-bottom: 1px solid var(--mui-palette-divider); }
+.title { font-size: 1.25rem; }
+.grow { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.body { flex: 1; overflow-y: auto; }
+.alert { margin: .75rem 1rem; }
+.loading { display: flex; justify-content: center; padding: 2rem; }
+.empty { color: var(--mui-palette-text-secondary); padding: 1.5rem 1.25rem; }
+
+/* The conversation list */
+.list { list-style: none; margin: 0; padding: 0; }
+.item {
+  display: flex; align-items: center; gap: .75rem; width: 100%;
+  padding: .75rem 1.25rem; border: 0; border-bottom: 1px solid var(--mui-palette-divider);
+  background: none; font: inherit; color: inherit; text-align: left; cursor: pointer;
+}
+.item:hover { background: var(--mui-palette-action-hover); }
+.avatar { background: var(--mui-palette-secondary-main); color: var(--mui-palette-secondary-contrastText); font-size: .9rem; }
+.itemText { flex: 1; min-width: 0; display: grid; gap: .125rem; }
+.itemTop { display: flex; justify-content: space-between; gap: .5rem; }
+.name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.unreadName { font-weight: 700; }
+.time { color: var(--mui-palette-text-secondary); font-size: .8125rem; white-space: nowrap; }
+.snippet { color: var(--mui-palette-text-secondary); font-size: .875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.count {
+  min-width: 1.5rem; height: 1.5rem; padding: 0 .4rem; border-radius: .75rem;
+  background: var(--mui-palette-primary-main); color: var(--mui-palette-primary-contrastText);
+  font-size: .8125rem; font-weight: 600; display: grid; place-items: center;
+}
+
+/* One conversation */
+.messages { flex: 1; overflow-y: auto; padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: .5rem; background: var(--mui-palette-grey-50); }
+.bubble { align-self: flex-start; max-width: 80%; padding: .5rem .75rem; border-radius: 1rem 1rem 1rem .25rem; background: var(--mui-palette-background-paper); box-shadow: 0 1px 2px rgba(0, 0, 0, .08); }
+.mine { align-self: flex-end; border-radius: 1rem 1rem .25rem 1rem; background: var(--mui-palette-primary-main); color: var(--mui-palette-primary-contrastText); }
+.bubbleText { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bubbleTime { display: block; margin-top: .125rem; font-size: .75rem; opacity: .8; text-align: right; }
+
+.reply { padding: .75rem 1rem 1rem; border-top: 1px solid var(--mui-palette-divider); display: grid; gap: .5rem; }
+.send { justify-self: end; }

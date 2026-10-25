@@ -28,7 +28,7 @@ interface CourseScreenProps {
   progress: number | null;          // 0–100, or null when nothing is tracked
   moodleCourseUrl: string;          // Where to enrol, in Moodle
   learnersHref?: string;            // Only for the course's teachers and site admins
-  canRequestAccess?: boolean;       // Not enrolled: offer "Ask for access" instead of a link to Moodle
+  canRequestAccess?: boolean;       // Not enrolled: "contact the admin" instead of a link to Moodle
 }
 
 export function CourseScreen({ course, sections, progress, moodleCourseUrl, learnersHref, canRequestAccess }: CourseScreenProps) {

@@ -8,3 +8,9 @@
 .title { margin-bottom: 2rem; }
 .welcome { display: block; color: var(--mui-palette-text-primary); }
 .hint { margin-top: 1rem; color: var(--mui-palette-text-secondary); }
+
+/* "Or try a demo": Teacher / Student */
+.demo { margin-top: 1.5rem; }
+.demoDivider { margin-bottom: 1rem; color: var(--mui-palette-text-secondary); }
+.demoButtons { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: .75rem; }
+.demoError { margin-top: 1rem; }

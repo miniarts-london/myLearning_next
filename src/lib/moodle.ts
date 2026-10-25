@@ -1,7 +1,7 @@
 import 'server-only';
 import { cache } from 'react';
 import type {
-  ActivityCompletionStatus, CourseUser,
+  ActivityCompletionStatus, CourseUser, MoodleConversation, MoodleConversationMember, MoodleMessage,
   AssignSubmissionStatus, CalendarActionEvent, Category, Course, CourseModuleInfo, MoodleWarning, CourseSection, EnrolledCourse, MoodleAssignment,
   MoodleException, MoodlePage, MoodleUrl, SiteInfo,
 } from './types';
@@ -197,6 +197,30 @@ export const moodle = {
       throw new MoodleError('messagenotsent', result?.errormessage ?? 'The message could not be sent.');
     }
   },
+
+  // Messaging -----------------------------------------------------------------------------
+  // The user's conversations, most recent first, each with its latest message.
+  conversations: async (token: string, userid: number) =>
+    (await call<{ conversations: MoodleConversation[] }>(token, 'core_message_get_conversations', {
+      userid, limitfrom: 0, limitnum: 50, mergeself: true,
+    })).conversations,
+
+  // One conversation's members and messages (newest first).
+  conversationMessages: (token: string, userid: number, convid: number) =>
+    call<{ id: number; members: MoodleConversationMember[]; messages: MoodleMessage[] }>(token, 'core_message_get_conversation_messages', {
+      currentuserid: userid, convid, limitfrom: 0, limitnum: 100, newest: true,
+    }),
+
+  sendToConversation: async (token: string, conversationid: number, text: string) =>
+    (await call<MoodleMessage[]>(token, 'core_message_send_messages_to_conversation', {
+      conversationid, messages: [{ text, textformat: 2 }], // 2 = plain text
+    }))[0],
+
+  markConversationRead: (token: string, userid: number, conversationid: number) =>
+    call<null>(token, 'core_message_mark_all_conversation_messages_as_read', { userid, conversationid }),
+
+  unreadConversations: (token: string, userid: number) =>
+    call<number>(token, 'core_message_get_unread_conversations_count', { useridto: userid }),
 
   setManualCompletion: (token: string, cmid: number, completed: boolean) =>
     call<{ status: boolean }>(token, 'core_completion_update_activity_completion_status_manually', { cmid, completed }),

@@ -14,7 +14,7 @@ export async function requestAccess(_previous: AccessRequestState, formData: For
   const courseid = Number(formData.get('courseid'));
   const note = String(formData.get('note') ?? '').trim().slice(0, ACCESS_NOTE_MAX);
   const to = supportUserId();
-  if (!Number.isInteger(courseid) || !to) {
+  if (!Number.isInteger(courseid)) {
     return { ok: false, message: "Requests can't be sent from here. Please contact your administrator." };
   }
 

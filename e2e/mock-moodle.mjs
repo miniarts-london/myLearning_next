@@ -110,7 +110,34 @@ const events = () => {
     .filter((e) => !(e.id === 101 && submission.status === 'submitted')); // Moodle drops a deadline once it's submitted
 };
 let calendarDown = false;
-let messages = []; // Moodle messages sent through the app (GET /__messages shows them) // POST /__calendar-down makes the calendar fail, to test the fallback
+let messages = []; // Moodle messages sent through the app (GET /__messages shows them)
+
+// Conversations (Moodle messaging). Conversation 1: Sam (student) and Tess (teacher).
+const NAMES = { 2: 'Ada Admin', 5: 'Sam Student', 7: 'Tess Teacher', 21: 'Priya Shah', 22: 'Tom Okafor', 23: 'Lena Fischer', 24: 'Ben Carter' };
+const newConversations = () => {
+  const t = Math.floor(Date.now() / 1000);
+  return [
+    { id: 1, type: 1, members: [5, 7], read: { 5: 1, 7: 2 }, messages: [
+      { id: 1, useridfrom: 7, text: '<p>Hi Sam, how are you getting on with the audit?</p>', timecreated: t - 3 * 3600 },
+      { id: 2, useridfrom: 5, text: '<p>Nearly done, thanks!</p>', timecreated: t - 2 * 3600 },
+      { id: 3, useridfrom: 7, text: '<p>Great. Shout if you need help with <b>contrast</b> checks.</p>', timecreated: t - 3600 },
+    ] },
+  ];
+};
+let conversations = newConversations();
+let nextMessageId = 100;
+const member = (id) => ({ id, fullname: NAMES[id] ?? `User ${id}`, isonline: id === 7 });
+// Moodle's view of a conversation for one user: unread = messages from others after what they've read.
+const viewFor = (c, me) => {
+  const unread = c.messages.filter((m) => m.useridfrom !== me && m.id > (c.read[me] ?? 0)).length;
+  return { id: c.id, name: '', type: c.type, isread: unread === 0, unreadcount: unread || null,
+    members: c.members.filter((id) => id !== me).map(member), messages: [...c.messages].reverse().slice(0, 1) };
+};
+const between = (a, b) => {
+  let c = conversations.find((x) => x.type === 1 && x.members.includes(a) && x.members.includes(b));
+  if (!c) { c = { id: conversations.length + 1, type: 1, members: [a, b], read: {}, messages: [] }; conversations.push(c); }
+  return c;
+}; // POST /__calendar-down makes the calendar fail, to test the fallback
 
 const exception = (errorcode, message) => ({ exception: 'moodle_exception', errorcode, message });
 
@@ -209,8 +236,34 @@ function webService(fn, p, user) {
       const touserid = Number(p.get('messages[0][touserid]'));
       if (![2, 5, 7, ...ROSTER.map((r) => r.id)].includes(touserid)) return [{ msgid: -1, clientmsgid: '', errormessage: 'User does not exist' }];
       messages.push({ from: user.userid, touserid, text: p.get('messages[0][text]') });
+      const c = between(user.userid, touserid);
+      c.messages.push({ id: nextMessageId++, useridfrom: user.userid, text: p.get('messages[0][text]'), timecreated: Math.floor(Date.now() / 1000) });
       return [{ msgid: messages.length, clientmsgid: '' }];
     }
+    case 'core_message_get_conversations':
+      return { conversations: conversations.filter((c) => c.members.includes(user.userid))
+        .sort((a, b) => (b.messages.at(-1)?.timecreated ?? 0) - (a.messages.at(-1)?.timecreated ?? 0))
+        .map((c) => viewFor(c, user.userid)) };
+    case 'core_message_get_conversation_messages': {
+      const c = conversations.find((x) => x.id === Number(p.get('convid')) && x.members.includes(user.userid));
+      if (!c) return exception('nopermissions', 'You do not have permission to view this conversation.');
+      return { id: c.id, members: c.members.map(member), messages: [...c.messages].reverse() };
+    }
+    case 'core_message_send_messages_to_conversation': {
+      const c = conversations.find((x) => x.id === Number(p.get('conversationid')) && x.members.includes(user.userid));
+      if (!c) return exception('nopermissions', 'You do not have permission to send this message.');
+      const m = { id: nextMessageId++, useridfrom: user.userid, text: p.get('messages[0][text]'), timecreated: Math.floor(Date.now() / 1000) };
+      c.messages.push(m);
+      c.read[user.userid] = m.id;
+      return [m];
+    }
+    case 'core_message_mark_all_conversation_messages_as_read': {
+      const c = conversations.find((x) => x.id === Number(p.get('conversationid')));
+      if (c) c.read[user.userid] = c.messages.at(-1)?.id ?? 0;
+      return null;
+    }
+    case 'core_message_get_unread_conversations_count':
+      return conversations.filter((c) => c.members.includes(user.userid) && viewFor(c, user.userid).unreadcount).length;
     case 'core_completion_update_activity_completion_status_manually': {
       const cmid = Number(p.get('cmid'));
       if (p.get('completed') === '1') done.add(cmid); else done.delete(cmid);
@@ -229,8 +282,12 @@ http.createServer((req, res) => {
     const json = (data) => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(data)); };
     const url = req.url ?? '';
 
-    if (url.startsWith('/__reset')) { done = new Set(INITIAL_DONE); calendarDown = false; submission = newSubmission(); messages = []; return json({ ok: true }); }
+    if (url.startsWith('/__reset')) { done = new Set(INITIAL_DONE); calendarDown = false; submission = newSubmission(); messages = []; conversations = newConversations(); return json({ ok: true }); }
     if (url.startsWith('/__messages')) return json(messages);
+    if (url.startsWith('/__reply')) { // POST /__reply?text=…: Tess replies to Sam in conversation 1
+      conversations[0].messages.push({ id: nextMessageId++, useridfrom: 7, text: new URL(url, BASE).searchParams.get('text') ?? 'Hello', timecreated: Math.floor(Date.now() / 1000) });
+      return json({ ok: true });
+    }
     if (url.startsWith('/__calendar-down')) { calendarDown = true; return json({ ok: true }); }
     if (url.startsWith('/login/token.php')) {
       const token = TOKEN_FOR[p.get('username')];

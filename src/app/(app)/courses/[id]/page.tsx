@@ -4,7 +4,6 @@ import { Suspense } from 'react';
 import { verifySession } from '@/lib/dal';
 import { moodle, moodleUrl, MoodleError } from '@/lib/moodle';
 import { canSeeLearners, teachesCourse } from '@/lib/staff.server';
-import { supportUserId } from '@/lib/accessRequest.server';
 import { Loading } from '@/components/Loading';
 import { CourseScreen } from '@/components/screens/courses/Course';
 
@@ -57,7 +56,7 @@ async function CourseContent({ params }: Props) {
       progress={!teaches && tracked.length > 0 ? (done / tracked.length) * 100 : null}
       moodleCourseUrl={moodleUrl(`/course/view.php?id=${courseid}`)}
       learnersHref={staff ? `/courses/${courseid}/learners` : undefined}
-      canRequestAccess={!staff && supportUserId() !== null}
+      canRequestAccess={!staff}
     />
   );
 }
