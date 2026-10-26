@@ -56,3 +56,26 @@ test("teachers don't get a learner's submission box or Mark as done buttons", as
   await expect(page.getByRole('heading', { level: 1, name: 'Accessible Web Design' })).toBeVisible();
   await expect(page.getByRole('button', { name: /Mark as done|Done/ })).toHaveCount(0);
 });
+
+const suggestion = (page: Page, text: string) =>
+  page.getByRole('dialog', { name: 'Assistant' }).getByRole('button', { name: text });
+const openAssistant = (page: Page) => page.getByRole('button', { name: 'Assistant' }).click();
+
+test("the assistant suggests teachers' questions to teachers", async ({ page }) => {
+  await loginAs(page, 'teacher');
+  await openAssistant(page);
+  await expect(suggestion(page, 'Which assignments are set in my courses?')).toBeVisible();
+  await expect(suggestion(page, 'How am I doing in my courses?')).toHaveCount(0);
+
+  await page.goto('/courses/2'); // A course they teach
+  await openAssistant(page);
+  await expect(suggestion(page, 'What does this course cover, section by section?')).toBeVisible();
+  await expect(suggestion(page, 'What are the main ideas of this course?')).toHaveCount(0);
+});
+
+test("the assistant suggests learners' questions to learners", async ({ page }) => {
+  await loginAs(page, 'student');
+  await openAssistant(page);
+  await expect(suggestion(page, 'How am I doing in my courses?')).toBeVisible();
+  await expect(suggestion(page, 'Which assignments are set in my courses?')).toHaveCount(0);
+});

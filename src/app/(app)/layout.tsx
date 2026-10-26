@@ -14,6 +14,7 @@ import { Messages } from '@/components/messages/Messages';
 import { WelcomeIntro } from '@/components/WelcomeIntro';
 import { WELCOME_EARLY_SCRIPT } from '@/lib/welcome';
 import { assistantConfigured } from '@/lib/agent/config';
+import { taughtCourseIds } from '@/lib/staff.server';
 import styles from '@/css/AppLayout.module.css';
 
 // The header is static, so it loads instantly. Only the user's name waits for the session,
@@ -51,13 +52,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </Container>
       </AppBar>
       <Container component="main" id="main" maxWidth="lg" className={styles.main} data-app-shell>{children}</Container>
-      {/* The assistant, on every logged-in page. <Suspense>: it reads the page address, which isn't
-          known when the shell is prerendered. Only shown when a Claude API key is set. */}
-      {assistantConfigured() && <Suspense fallback={null}><Assistant /></Suspense>}
+      {/* The assistant, on every logged-in page. <Suspense>: it reads the page address and the
+          user's courses, which aren't known when the shell is prerendered. Only shown when a
+          Claude API key is set. */}
+      {assistantConfigured() && <Suspense fallback={null}><UserAssistant /></Suspense>}
       {/* Right after logging in: a short welcome with the horse (see WelcomeIntro). */}
       <WelcomeIntro withAssistant={assistantConfigured()} />
     </>
   );
+}
+
+// The assistant, told which courses this user teaches so it can suggest teachers' questions.
+// If Moodle can't say, it falls back to the learner's suggestions rather than failing the page.
+async function UserAssistant() {
+  const session = await verifySession();
+  const teaching = await taughtCourseIds(session.token, session.userid).catch(() => []);
+  return <Assistant teaching={teaching} />;
 }
 
 async function UserName() {

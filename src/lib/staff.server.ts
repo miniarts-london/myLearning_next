@@ -29,6 +29,13 @@ export const teachesCourse = cache(async (token: string, userid: number, coursei
   return isStaff((profile?.roles ?? []).map((r) => r.shortname), false);
 });
 
+// The ids of the courses this user teaches (or manages), out of the ones they're enrolled in.
+export async function taughtCourseIds(token: string, userid: number): Promise<number[]> {
+  const courses = await moodle.myCourses(token, userid);
+  const teaching = await Promise.all(courses.map((c) => teachesCourse(token, userid, c.id)));
+  return courses.filter((_, i) => teaching[i]).map((c) => c.id);
+}
+
 // Runs `task` over `items`, at most `limit` at a time, keeping the order.
 async function mapLimit<T, R>(items: T[], limit: number, task: (item: T) => Promise<R>): Promise<R[]> {
   const results: R[] = new Array(items.length);

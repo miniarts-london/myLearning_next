@@ -35,9 +35,13 @@ const answerText = (t: Turn) => t.parts.filter((p) => p.kind === 'text').map((p)
 // The assistant: a button on every page that opens a panel. It's an agent: for each message it
 // decides which lookups it needs (deadlines, progress, searching a course…), shows each one as a
 // step, and streams its answer.
-export function Assistant() {
+// `teaching`: ids of the courses this user teaches, so the suggestions fit a teacher.
+export function Assistant({ teaching }: { teaching: number[] }) {
   const pathname = usePathname();
-  const onCourse = /^\/courses\/\d+/.test(pathname);
+  const courseId = Number(/^\/courses\/(\d+)/.exec(pathname)?.[1]) || null;
+  const onCourse = courseId !== null;
+  // On a course page, their role in that course; elsewhere, whether they teach any course.
+  const asTeacher = onCourse ? teaching.includes(courseId) : teaching.length > 0;
   const [open, setOpen] = useState(false);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [message, setMessage] = useState('');
@@ -108,11 +112,16 @@ export function Assistant() {
     }
   }
 
-  const suggestions = [
-    'What should I focus on this week?',
-    'How am I doing in my courses?',
-    ...(onCourse ? ['What are the main ideas of this course?'] : []),
-  ];
+  // Teachers' questions stick to what the assistant can look up: course content and structure.
+  const suggestions = asTeacher
+    ? onCourse
+      ? ['What does this course cover, section by section?', 'Which assignments and quizzes are in this course?']
+      : ['Summarise what each of my courses covers', 'Which assignments are set in my courses?']
+    : [
+      'What should I focus on this week?',
+      'How am I doing in my courses?',
+      ...(onCourse ? ['What are the main ideas of this course?'] : []),
+    ];
 
   return (
     <>
