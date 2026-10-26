@@ -111,6 +111,7 @@ const events = () => {
 };
 let calendarDown = false;
 let messages = []; // Moodle messages sent through the app (GET /__messages shows them)
+let refusing = new Set(); // users whose message preferences refuse messages (POST /__refuse?ids=2,9)
 
 // Other learners' submissions to the assignment, and grades (for the teachers' Submissions page).
 const OTHER_SUBMISSIONS = {
@@ -119,6 +120,11 @@ const OTHER_SUBMISSIONS = {
   23: { status: 'submitted', text: '<p>All five criteria checked.</p>', ago: 5 },
 };
 const newGrades = () => ({ 23: { grade: 8, feedback: 'Thorough work.' } });
+// Assignment 2 ("Semantic HTML review", overdue): Priya submitted and has 15/20; Tom submitted, not graded.
+const SECOND_SUBMISSIONS = { 21: 'submitted', 22: 'submitted', 23: 'draft' };
+const SECOND_GRADES = { 21: 15 };
+// assignmentids[0]=1&assignmentids[1]=2 → [1, 2]
+const idsFrom = (p) => [...p.keys()].filter((k) => /^assignmentids\[\d+\]$/.test(k)).map((k) => Number(p.get(k)));
 let grades = newGrades();
 
 // Conversations (Moodle messaging). Conversation 1: Sam (student) and Tess (teacher).
@@ -179,6 +185,18 @@ function webService(fn, p, user) {
         { id: 2, fullname: 'Accessible Web Design', shortname: 'AWD101', summary: '', category: 1, progress: progress(), visible: 1, courseimage: INLINE_IMAGE },
         { id: 4, fullname: 'Secret course', shortname: 'SECRET', summary: '', category: 1, progress: 0, visible: 0 },
       ];
+    case 'core_user_get_users_by_field': {
+      const id = Number(p.get('values[0]'));
+      const r = ROSTER.find((x) => x.id === id);
+      if (!r) return [];
+      return [{
+        id: r.id,
+        fullname: r.fullname,
+        email: `${r.fullname.toLowerCase().replace(/ /g, '.')}@example.test`,
+        lastaccess: r.ago === null ? 0 : Math.floor(Date.now() / 1000) - r.ago * DAY - 600,
+        suspended: false,
+      }];
+    }
     case 'core_course_get_courses_by_field': {
       const id = p.get('value');
       return { courses: id ? courses.filter((c) => String(c.id) === id) : courses };
@@ -212,6 +230,12 @@ function webService(fn, p, user) {
           { plugin: 'onlinetext', subtype: 'assignsubmission', name: 'enabled', value: '1' },
           { plugin: 'file', subtype: 'assignsubmission', name: 'enabled', value: '1' },
         ],
+      }, {
+        // A second assignment, past its due date, for the course-wide Submissions page.
+        id: 2, cmid: 25, name: 'Assignment: Semantic HTML review', intro: '<p>Review a page for semantic HTML.</p>',
+        duedate: Math.floor(Date.now() / 1000) - 3 * 86400, cutoffdate: 0,
+        submissiondrafts: 0, requiresubmissionstatement: 0, grade: 20,
+        configs: [{ plugin: 'onlinetext', subtype: 'assignsubmission', name: 'enabled', value: '1' }],
       }] }] };
     case 'mod_assign_get_submission_status': {
       const submitted = submission.status === 'submitted';
@@ -235,11 +259,17 @@ function webService(fn, p, user) {
       }));
       subs.push({ userid: 5, status: submission.status, timemodified: submission.timemodified,
         plugins: [{ type: 'onlinetext', editorfields: [{ name: 'onlinetext', text: submission.html, format: 1 }] }] });
-      return { assignments: [{ assignmentid: 1, submissions: subs }], warnings: [] };
+      const second = Object.entries(SECOND_SUBMISSIONS).map(([userid, status]) => ({
+        userid: Number(userid), status, timemodified: now - 4 * 86400,
+        plugins: [{ type: 'onlinetext', editorfields: [{ name: 'onlinetext', text: '<p>Reviewed the headings and landmarks.</p>', format: 1 }] }],
+      }));
+      return { assignments: idsFrom(p).map((id) => ({ assignmentid: id, submissions: id === 1 ? subs : id === 2 ? second : [] })), warnings: [] };
     }
     case 'mod_assign_get_grades':
       if (isStudent) return exception('nopermissions', 'Sorry, but you do not currently have permissions to do that (Grade).');
-      return { assignments: [{ assignmentid: 1, grades: Object.entries(grades).map(([userid, g]) => ({ userid: Number(userid), grade: g.grade.toFixed(5), timemodified: 0 })) }], warnings: [] };
+      return { assignments: idsFrom(p).map((id) => ({ assignmentid: id, grades: id === 1
+        ? Object.entries(grades).map(([userid, g]) => ({ userid: Number(userid), grade: g.grade.toFixed(5), timemodified: 0 }))
+        : id === 2 ? Object.entries(SECOND_GRADES).map(([userid, g]) => ({ userid: Number(userid), grade: g.toFixed(5), timemodified: 0 })) : [] })), warnings: [] };
     case 'mod_assign_save_grade': {
       if (isStudent) return exception('nopermissions', 'Sorry, but you do not currently have permissions to do that (Grade).');
       grades[Number(p.get('userid'))] = { grade: Number(p.get('grade')), feedback: p.get('plugindata[assignfeedbackcomments_editor][text]') ?? '' };
@@ -262,7 +292,8 @@ function webService(fn, p, user) {
     }
     case 'core_message_send_instant_messages': {
       const touserid = Number(p.get('messages[0][touserid]'));
-      if (![2, 5, 7, ...ROSTER.map((r) => r.id)].includes(touserid)) return [{ msgid: -1, clientmsgid: '', errormessage: 'User does not exist' }];
+      if (![2, 5, 7, 9, ...ROSTER.map((r) => r.id)].includes(touserid)) return [{ msgid: -1, clientmsgid: '', errormessage: 'User does not exist' }];
+      if (refusing.has(touserid)) return [{ msgid: -1, clientmsgid: '', errormessage: "You can't message Admin User due to their message preferences. Try adding them as a contact." }];
       messages.push({ from: user.userid, touserid, text: p.get('messages[0][text]') });
       const c = between(user.userid, touserid);
       c.messages.push({ id: nextMessageId++, useridfrom: user.userid, text: p.get('messages[0][text]'), timecreated: Math.floor(Date.now() / 1000) });
@@ -320,13 +351,14 @@ http.createServer((req, res) => {
     const json = (data) => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(data)); };
     const url = req.url ?? '';
 
-    if (url.startsWith('/__reset')) { done = new Set(INITIAL_DONE); calendarDown = false; submission = newSubmission(); messages = []; conversations = newConversations(); grades = newGrades(); return json({ ok: true }); }
+    if (url.startsWith('/__reset')) { done = new Set(INITIAL_DONE); calendarDown = false; submission = newSubmission(); messages = []; conversations = newConversations(); grades = newGrades(); refusing = new Set(); return json({ ok: true }); }
     if (url.startsWith('/__grades')) return json(grades);
     if (url.startsWith('/__messages')) return json(messages);
     if (url.startsWith('/__reply')) { // POST /__reply?text=…: Tess replies to Sam in conversation 1
       conversations[0].messages.push({ id: nextMessageId++, useridfrom: 7, text: new URL(url, BASE).searchParams.get('text') ?? 'Hello', timecreated: Math.floor(Date.now() / 1000) });
       return json({ ok: true });
     }
+    if (url.startsWith('/__refuse')) { refusing = new Set((new URL(url, BASE).searchParams.get('ids') ?? '').split(',').map(Number)); return json({ ok: true }); }
     if (url.startsWith('/__calendar-down')) { calendarDown = true; return json({ ok: true }); }
     if (url.startsWith('/login/token.php')) {
       const token = TOKEN_FOR[p.get('username')];

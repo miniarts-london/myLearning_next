@@ -43,7 +43,7 @@ test("a learner's Up next still shows their deadlines, not calendar events", asy
 test("teachers don't get a learner's submission box or Mark as done buttons", async ({ page }) => {
   await loginAs(page, 'teacher');
   await page.goto('/courses/2/activities/13'); // The assignment
-  await expect(page.getByRole('heading', { level: 1, name: 'Assignment: Accessibility audit' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Assignment: Accessibility audit' })).toBeVisible();
   await expect(page.getByText('Audit a web page against five WCAG criteria.')).toBeVisible(); // The assignment itself still shows
   await expect(page.getByRole('region', { name: 'Your submission' })).toHaveCount(0);
   // Instead: a link to Moodle's grading page for this assignment, in a new tab.

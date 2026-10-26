@@ -15,16 +15,21 @@ test.beforeEach(async ({ request }) => {
   await resetMoodle(request);
 });
 
-const learnersTable = (page: Page) => page.getByRole('table', { name: /Learners in Accessible Web Design/ });
-const learnerNames = (page: Page) => learnersTable(page).getByRole('rowheader').allTextContents();
+const learnersTable = (page: Page) => page.getByRole('table', { name: /Students in Accessible Web Design/ });
+// Waits for the list first: the course name and tabs show before it has loaded.
+async function learnerNames(page: Page) {
+  await expect(learnersTable(page).getByRole('rowheader').first()).toBeVisible();
+  return learnersTable(page).getByRole('rowheader').allTextContents();
+}
 
-test('a teacher can open the learner list from the course page', async ({ page }) => {
+test('a teacher can open the student list from the course page', async ({ page }) => {
   await loginAs(page, 'teacher');
   await page.goto('/courses/2');
-  await page.getByRole('link', { name: 'Learners' }).click();
+  await page.getByRole('navigation', { name: 'Course pages' }).getByRole('link', { name: 'Students' }).click();
 
   await expect(page).toHaveURL(/\/courses\/2\/learners$/);
-  await expect(page.getByRole('heading', { level: 1, name: 'Learners' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Accessible Web Design' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Course pages' }).getByRole('link', { name: 'Students' })).toHaveAttribute('aria-current', 'page');
   // Learners only, not the teacher; sorted by name to start with.
   expect(await learnerNames(page)).toEqual(['Ben Carter', 'Lena Fischer', 'Priya Shah', 'Sam Student', 'Tom Okafor']);
 
@@ -51,14 +56,14 @@ test('the list can be sorted and filtered', async ({ page }) => {
 
   // Not visited in two weeks: Lena (20 days ago) and Ben (never).
   await page.getByRole('checkbox', { name: /haven't visited in 2 weeks/ }).check();
-  await expect(page.getByRole('status')).toHaveText('Showing 2 of 5 learners');
+  await expect(page.getByRole('status')).toHaveText('Showing 2 of 5 students');
   expect((await learnerNames(page)).sort()).toEqual(['Ben Carter', 'Lena Fischer']);
 });
 
 test('a site admin can see the learners of any course', async ({ page }) => {
   await loginAs(page, 'admin');
   await page.goto('/courses/2');
-  await page.getByRole('link', { name: 'Learners' }).click();
+  await page.getByRole('navigation', { name: 'Course pages' }).getByRole('link', { name: 'Students' }).click();
   await expect(learnersTable(page)).toBeVisible();
 });
 
@@ -66,7 +71,7 @@ test('students get no link, and the page is "not found" for them', async ({ page
   await loginAs(page, 'student');
   await page.goto('/courses/2');
   await expect(page.getByRole('heading', { level: 1, name: 'Accessible Web Design' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Learners' })).toHaveCount(0);
+  await expect(page.getByRole('navigation', { name: 'Course pages' })).toHaveCount(0); // No tabs for students
 
   await page.goto('/courses/2/learners');
   await expectNotFound(page);

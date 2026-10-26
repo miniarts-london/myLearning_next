@@ -5,7 +5,7 @@ import { verifySession } from '@/lib/dal';
 import { teachesCourse } from '@/lib/staff.server';
 import { moodle, moodleUrl, MoodleError } from '@/lib/moodle';
 import { Loading } from '@/components/Loading';
-import { ActivityScreen, type ActivityDetail } from '@/components/screens/Activity';
+import { ActivityScreen, type ActivityDetail } from '@/components/screens/courses/Activity';
 import type { CourseModule } from '@/lib/types';
 import { toAssignmentView } from '@/lib/assignment';
 

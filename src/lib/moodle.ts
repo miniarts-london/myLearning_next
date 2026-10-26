@@ -2,7 +2,7 @@ import 'server-only';
 import { cache } from 'react';
 import { decodeEntities, decodeNames } from './entities';
 import type {
-  ActivityCompletionStatus, CalendarEvent, CourseUser, MoodleGrade, MoodleSubmission, MoodleConversation, MoodleConversationMember, MoodleMessage,
+  ActivityCompletionStatus, CalendarEvent, CourseUser, MoodleGrade, MoodleSubmission, MoodleConversation, MoodleConversationMember, MoodleMessage, MoodleUserProfile,
   AssignSubmissionStatus, CalendarActionEvent, Category, Course, CourseModuleInfo, MoodleWarning, CourseSection, EnrolledCourse, MoodleAssignment,
   MoodleException, MoodlePage, MoodleUrl, SiteInfo,
 } from './types';
@@ -177,6 +177,10 @@ export const moodle = {
   courseProfile: cache(async (token: string, userid: number, courseid: number) =>
     (await call<CourseUser[]>(token, 'core_user_get_course_user_profiles', { userlist: [{ userid, courseid }] }))[0]),
 
+  // One user by Moodle id. Missing when that id isn't a user. Email can be empty.
+  userById: async (token: string, userid: number) =>
+    (await call<MoodleUserProfile[]>(token, 'core_user_get_users_by_field', { field: 'id', values: [String(userid)] }))[0],
+
   // Everyone enrolled in a course, with their roles and when they last visited it.
   enrolledUsers: (token: string, courseid: number) =>
     call<CourseUser[]>(token, 'core_enrol_get_enrolled_users', {
@@ -231,14 +235,17 @@ export const moodle = {
 
   // Marking (teachers) -------------------------------------------------------------------
   submissions: async (token: string, assignmentid: number) =>
-    (await call<{ assignments: { assignmentid: number; submissions: MoodleSubmission[] }[] }>(token, 'mod_assign_get_submissions', {
-      assignmentids: [assignmentid],
-    })).assignments[0]?.submissions ?? [],
+    (await moodle.submissionsFor(token, [assignmentid])).get(assignmentid) ?? [],
+  // The same for several assignments in one request, by assignment id.
+  submissionsFor: async (token: string, assignmentids: number[]) => new Map(assignmentids.length === 0 ? [] :
+    (await call<{ assignments: { assignmentid: number; submissions: MoodleSubmission[] }[] }>(token, 'mod_assign_get_submissions', { assignmentids }))
+      .assignments.map((a) => [a.assignmentid, a.submissions] as const)),
 
   grades: async (token: string, assignmentid: number) =>
-    (await call<{ assignments: { assignmentid: number; grades: MoodleGrade[] }[] }>(token, 'mod_assign_get_grades', {
-      assignmentids: [assignmentid],
-    })).assignments[0]?.grades ?? [],
+    (await moodle.gradesFor(token, [assignmentid])).get(assignmentid) ?? [],
+  gradesFor: async (token: string, assignmentids: number[]) => new Map(assignmentids.length === 0 ? [] :
+    (await call<{ assignments: { assignmentid: number; grades: MoodleGrade[] }[] }>(token, 'mod_assign_get_grades', { assignmentids }))
+      .assignments.map((a) => [a.assignmentid, a.grades] as const)),
 
   // Saves a grade (points) and a feedback comment for one learner. Moodle checks the user may grade.
   saveGrade: (token: string, assignmentid: number, userid: number, grade: number, feedback: string) =>

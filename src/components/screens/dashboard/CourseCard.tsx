@@ -5,7 +5,7 @@ import CardMedia from '@mui/material/CardMedia';
 import Typography from '@mui/material/Typography';
 import { courseImageUrl } from '@/lib/files';
 import styles from '@/css/CourseCard.module.css';
-import { ProgressBar } from './ProgressBar';
+import { ProgressBar } from '../../progressCircle/ProgressBar';
 
 interface Props {
   id: number;

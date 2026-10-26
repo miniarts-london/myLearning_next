@@ -1,7 +1,7 @@
 import Alert from '@mui/material/Alert';
 import Typography from '@mui/material/Typography';
-import { CourseCard } from '@/components/CourseCard';
-import { CourseGrid } from '@/components/CourseGrid';
+import { CourseCard } from '@/components/screens/dashboard/CourseCard';
+import { CourseGrid } from '@/components/screens/dashboard/CourseGrid';
 import { ReadMore } from '@/components/ReadMore';
 import { SafeHtml } from '@/components/SafeHtml';
 import { SectionTitle } from '@/components/SectionTitle';

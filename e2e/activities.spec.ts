@@ -10,7 +10,9 @@ test('activities open inside the app, not in Moodle', async ({ page }) => {
   await page.goto('/courses/2');
   await courseSection(page, 'Why accessibility matters').getByRole('link', { name: 'Accessibility and WCAG' }).click();
   await expect(page).toHaveURL(/\/courses\/2\/activities\/11$/);
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Accessibility and WCAG');
+  // It opens under the course name (the shared course header), as its own second-level heading.
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Accessible Web Design');
+  await expect(page.getByRole('heading', { level: 2, name: 'Accessibility and WCAG' })).toBeVisible();
   await expect(page.getByRole('article')).toContainText('WCAG has four principles.');
 });
 
@@ -33,12 +35,12 @@ test('Previous and Next move through the course in order, skipping labels and hi
   const expected = ['WCAG overview (W3C)', 'Assignment: Accessibility audit', 'Use the right element', 'Semantics quiz'];
   for (const name of expected) {
     await pager.getByRole('link', { name: /Next/ }).click();
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText(name);
+    await expect(page.getByRole('heading', { level: 2, name, exact: true })).toBeVisible();
   }
   await expect(pager.getByRole('link', { name: /Next/ })).toHaveCount(0);
 
   await pager.getByRole('link', { name: /Previous/ }).click();
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Use the right element');
+  await expect(page.getByRole('heading', { level: 2, name: 'Use the right element' })).toBeVisible();
   await pager.getByRole('link', { name: 'Back to course' }).click();
   await expect(page).toHaveURL(/\/courses\/2$/);
 });

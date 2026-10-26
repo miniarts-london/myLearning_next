@@ -14,3 +14,17 @@
 .files { margin: 0 0 1rem; padding-left: 1.25rem; }
 .gradeForm { display: grid; gap: 1rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--mui-palette-divider); }
 .gradeField { max-width: 14rem; }
+
+/* The course-wide page */
+.toolbar p { margin: 0; }
+.overdue { margin-left: .5rem; }
+
+/* Rows open the drawer */
+.clickable { cursor: pointer; }
+.rowButton { font: inherit; font-weight: 600; text-align: left; vertical-align: baseline; }
+
+/* The submissions drawer */
+.drawer { width: min(56rem, 100vw); padding: 1.5rem; }
+.drawerHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.drawerKicker { color: var(--mui-palette-text-secondary); line-height: 1.5; }
+.drawerLinks { margin: .25rem 0 1.5rem; }

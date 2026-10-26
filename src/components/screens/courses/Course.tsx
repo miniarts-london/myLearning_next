@@ -1,20 +1,16 @@
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
-import Breadcrumbs from '@mui/material/Breadcrumbs';
 import Link from '@mui/material/Link';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Paper from '@mui/material/Paper';
-import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import PeopleIcon from '@mui/icons-material/PeopleOutlined';
-import { RequestAccess } from '@/components/RequestAccess';
+import { RequestAccess } from '@/components/screens/courses/RequestAccess';
 import { SafeHtml } from '@/components/SafeHtml';
-import { ProgressBar } from '@/components/ProgressBar';
-import { CompletionButton } from '@/components/CompletionButton';
+import { ProgressBar } from '@/components/progressCircle/ProgressBar';
+import { CompletionButton } from '@/components/screens/courses/CompletionButton';
 import { SectionTitle } from '@/components/SectionTitle';
 import { activityHref } from '@/lib/links';
 import type { Course, CourseModule, CourseSection } from '@/lib/types';
@@ -27,29 +23,18 @@ interface CourseScreenProps {
   sections: CourseSection[] | null; // null when the user isn't enrolled
   progress: number | null;          // 0–100, or null when nothing is tracked
   moodleCourseUrl: string;          // Where to enrol, in Moodle
-  learnersHref?: string;            // Only for the course's teachers and site admins
   forLearner?: boolean;             // false for the course's teachers: no "Mark as done" buttons
   canRequestAccess?: boolean;       // Not enrolled: "contact the admin" instead of a link to Moodle
 }
 
-export function CourseScreen({ course, sections, progress, moodleCourseUrl, learnersHref, canRequestAccess, forLearner = true }: CourseScreenProps) {
+export function CourseScreen({ course, sections, progress, moodleCourseUrl, canRequestAccess, forLearner = true }: CourseScreenProps) {
   return (
     <>
-      <Breadcrumbs className={common.breadcrumbs}>
-        <Link href="/dashboard">Dashboard</Link>
-        <Typography className={common.breadcrumbCurrent}>{course.categoryname}</Typography>
-      </Breadcrumbs>
-      <Typography variant="h1" className={common.pageTitle}>{course.fullname}</Typography>
-      
+
       <Grid container spacing={2} className={styles.intro}>
         <SafeHtml html={course.summary} className="summary" />
         {progress !== null && <ProgressBar value={progress} label="Course progress" />}
       </Grid>
-      {learnersHref && (
-        <Button href={learnersHref} variant="outlined" color="secondary" startIcon={<PeopleIcon />} className={styles.learners}>
-          Learners
-        </Button>
-      )}
       {sections === null ? (
         canRequestAccess
           ? <RequestAccess courseid={course.id} coursename={course.fullname} />

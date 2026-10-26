@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { accessRequestText, tooSoon } from './accessRequest';
+import { accessRequestText, recipientOrder, tooSoon } from './accessRequest';
 
 describe('accessRequestText', () => {
   const base = { learner: 'Sam Student', course: 'Horse Care', courseid: 3, participantsUrl: 'https://moodle.example/user/index.php?id=3' };
@@ -25,5 +25,15 @@ describe('tooSoon', () => {
   });
   it('never blocks when the cooldown is 0', () => {
     expect(tooSoon(1000, 1000, 0)).toBe(false);
+  });
+});
+
+describe('recipientOrder', () => {
+  it('asks the support user first, then the other admins', () => {
+    expect(recipientOrder(2, new Set([9, 12]))).toEqual([2, 9, 12]);
+  });
+  it('asks each person once, even if the support user is also listed as an admin', () => {
+    expect(recipientOrder(2, new Set([9, 2]))).toEqual([2, 9]);
+    expect(recipientOrder(2, [])).toEqual([2]);
   });
 });

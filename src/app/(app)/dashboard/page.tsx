@@ -7,7 +7,7 @@ import { loadUpNext } from '@/lib/upNext.server';
 import { teachesCourse } from '@/lib/staff.server';
 import { loadUpcomingEvents } from '@/lib/events.server';
 import { Loading } from '@/components/Loading';
-import { DashboardScreen } from '@/components/screens/Dashboard';
+import { DashboardScreen } from '@/components/screens/dashboard/Dashboard';
 
 export const metadata: Metadata = { title: 'Dashboard' };
 

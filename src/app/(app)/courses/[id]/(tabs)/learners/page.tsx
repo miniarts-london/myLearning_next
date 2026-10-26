@@ -9,11 +9,11 @@ import { LearnersScreen } from '@/components/screens/courses/Learners';
 
 type Props = { params: Promise<{ id: string }> };
 
-export const metadata: Metadata = { title: 'Learners' };
+export const metadata: Metadata = { title: 'Students' };
 
 export default function LearnersPage({ params }: Props) {
   return (
-    <Suspense fallback={<Loading label="Loading the learners…" />}>
+    <Suspense fallback={<Loading label="Loading the students…" />}>
       <LearnersContent params={params} />
     </Suspense>
   );

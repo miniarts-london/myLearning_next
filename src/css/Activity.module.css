@@ -25,3 +25,6 @@
 
 /* Teachers on an assignment: Submissions, and Moodle's grader. */
 .teacherActions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin-top: 1rem; }
+
+/* The activity's name, under the course name and tabs. */
+.title { margin-bottom: 1.5rem; }

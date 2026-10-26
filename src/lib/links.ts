@@ -5,6 +5,11 @@ export function activityHref(courseid: number, cmid: number): string {
   return `/courses/${courseid}/activities/${cmid}`;
 }
 
+// The course's Assignments tab, with that assignment's submissions open in the drawer.
+export function submissionsHref(courseid: number, cmid: number): string {
+  return `/courses/${courseid}/submissions?assignment=${cmid}`;
+}
+
 function moodleOrigin(): string | undefined {
   try {
     return process.env.MOODLE_URL ? new URL(process.env.MOODLE_URL).origin : undefined;

@@ -51,7 +51,7 @@ export function AssignmentSubmission({ view, courseid, moodleUrl, submittedText,
   return (
     <Paper component="section" aria-labelledby="your-submission" elevation={0} className={`${styles.panel} ${common.softShadow}`}>
       <Stack direction="row" className={styles.header}>
-        <Typography id="your-submission" variant="h2" className={styles.heading}>Your submission</Typography>
+        <Typography id="your-submission" variant="h2" component="h3" className={styles.heading}>Your submission</Typography>
         <Chip label={STATUS_LABEL[view.status]} color={statusColour} variant={submitted ? 'filled' : 'outlined'} size="small" />
       </Stack>
 

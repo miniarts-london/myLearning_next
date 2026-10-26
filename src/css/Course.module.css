@@ -1,8 +1,6 @@
 /* Summary on the left, progress ring on the right (below it on narrow screens). */
 .intro { margin-bottom: 1.5rem; justify-content: space-between; align-items: center; }
 
-/* "Learners", under the summary: teachers and admins only. */
-.learners { margin-bottom: 1.5rem; }
 .notEnrolled { margin-top: 1rem; }
 
 .activities { display: grid; gap: .5rem; }

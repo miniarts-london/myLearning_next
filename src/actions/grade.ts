@@ -6,7 +6,7 @@ import { moodle, MoodleError } from '@/lib/moodle';
 import { canSeeLearners } from '@/lib/staff.server';
 import { checkGrade, FEEDBACK_MAX, formatGrade, type GradeState } from '@/lib/marking';
 
-// Saves a grade and feedback for one learner, from the teachers' Submissions page.
+// Saves a grade and feedback for one student, from the submissions drawer on the Assignments tab.
 // Checked here too: only the course's teachers (and admins), only points-graded assignments, and
 // only a grade in range. Moodle then checks again that this user may grade.
 export async function saveGrade(_previous: GradeState, formData: FormData): Promise<GradeState> {
@@ -30,7 +30,7 @@ export async function saveGrade(_previous: GradeState, formData: FormData): Prom
       return { ok: false, message: checked.error };
     }
     await moodle.saveGrade(session.token, assignment.id, userid, checked.grade, feedback);
-    revalidatePath(`/courses/${courseid}/activities/${cmid}/submissions`);
+    revalidatePath(`/courses/${courseid}/submissions`);
     return { ok: true, message: `Saved: ${formatGrade(checked.grade)} / ${formatGrade(max)}.` };
   } catch (e) {
     if (e instanceof MoodleError) {

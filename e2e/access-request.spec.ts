@@ -29,6 +29,46 @@ test('a learner can contact the admin about a course, with a note', async ({ pag
   expect(messages[0].text).toContain(`${MOODLE}/user/index.php?id=3`);
 });
 
+// Moodle refuses a message when the admin's message preferences don't allow it
+// ("You can't message Admin User due to their message preferences…").
+async function askForAccess(page: import('@playwright/test').Page) {
+  await loginAsStudent(page);
+  await page.goto('/courses/3');
+  await page.getByRole('button', { name: 'contact the admin' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Contact the admin' });
+  await dialog.getByRole('button', { name: 'Send' }).click();
+  return dialog;
+}
+
+test("if the main admin doesn't accept messages, the request goes to the next admin", async ({ page, request }) => {
+  await request.post(`${MOODLE}/__refuse?ids=2`);
+  const dialog = await askForAccess(page);
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole('status')).toHaveText(/Your request has been sent to the administrator/);
+
+  const messages = await (await request.get(`${MOODLE}/__messages`)).json();
+  expect(messages).toHaveLength(1);
+  expect(messages[0]).toMatchObject({ from: 5, touserid: 9 });
+  expect(messages[0].text).toContain('Horse Care Essentials');
+});
+
+test("if no admin accepts messages, the learner is told plainly, without Moodle's wording", async ({ page, request }) => {
+  await request.post(`${MOODLE}/__refuse?ids=2,9`);
+  const dialog = await askForAccess(page);
+  const alert = dialog.getByRole('alert');
+  await expect(alert).toHaveText("Your request couldn't be sent: the administrator can't receive messages at the moment. Please try again later.");
+  await expect(alert).not.toContainText('message preferences');
+  await expect(alert).not.toContainText('contact');
+  expect(await (await request.get(`${MOODLE}/__messages`)).json()).toEqual([]);
+
+  // Nothing was sent, so it doesn't count as today's request: once an admin can be reached, it goes through.
+  await request.post(`${MOODLE}/__refuse?ids=`);
+  await dialog.getByRole('button', { name: 'Send' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole('status')).toHaveText(/Your request has been sent to the administrator/);
+  expect(await (await request.get(`${MOODLE}/__messages`)).json()).toHaveLength(1);
+});
+
 test('the message box can be cancelled, and passes the accessibility checks', async ({ page, request }) => {
   await loginAsStudent(page);
   await page.goto('/courses/3');

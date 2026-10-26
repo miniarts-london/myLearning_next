@@ -1,0 +1,21 @@
+/* Syllabus / Students / Assignments, under the course name (teachers and admins). */
+.title { margin-bottom: 1rem; }
+
+.tabs { border-bottom: 1px solid var(--mui-palette-divider); margin-bottom: 1.5rem; overflow-x: auto; }
+.tabs ul { display: flex; gap: .25rem; margin: 0; padding: 0; list-style: none; }
+
+.tab {
+  display: block;
+  padding: .75rem 1rem;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px;
+  color: var(--mui-palette-text-secondary);
+  font-weight: 500;
+  font-size: .875rem;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.tab:hover { color: var(--mui-palette-text-primary); background: var(--mui-palette-action-hover); }
+.tab:focus-visible { outline: 2px solid var(--mui-palette-primary-main); outline-offset: -2px; }
+.current, .current:hover { color: var(--mui-palette-primary-main); border-bottom-color: var(--mui-palette-primary-main); }

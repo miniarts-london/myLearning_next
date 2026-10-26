@@ -2,7 +2,6 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import Alert from '@mui/material/Alert';
-import Breadcrumbs from '@mui/material/Breadcrumbs';
 import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import LinearProgress from '@mui/material/LinearProgress';
@@ -16,7 +15,6 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import TableSortLabel from '@mui/material/TableSortLabel';
-import Typography from '@mui/material/Typography';
 import { INACTIVE_DAYS, isInactive, lastVisitLabel, type LearnerRow } from '@/lib/learners';
 import type { Course } from '@/lib/types';
 import common from '@/css/common.module.css';
@@ -27,7 +25,7 @@ type SortKey = 'name' | 'progress' | 'lastVisit';
 type Direction = 'asc' | 'desc';
 
 const COLUMNS: { key: SortKey; label: string; firstDirection: Direction }[] = [
-  { key: 'name', label: 'Learner', firstDirection: 'asc' },
+  { key: 'name', label: 'Student', firstDirection: 'asc' },
   { key: 'progress', label: 'Progress', firstDirection: 'asc' },   // Least progress first: who needs help
   { key: 'lastVisit', label: 'Last visit', firstDirection: 'asc' }, // Longest ago first
 ];
@@ -66,34 +64,30 @@ export function LearnersScreen({ course, learners, now }: { course: Course; lear
 
   return (
     <>
-      <Breadcrumbs className={common.breadcrumbs}>
-        <Link href="/dashboard">Dashboard</Link>
-        <Link href={`/courses/${course.id}`}>{course.fullname}</Link>
-      </Breadcrumbs>
-      <Typography variant="h1" className={common.pageTitle}>Learners</Typography>
+      <h2 className="visually-hidden">Students</h2>
 
       {learners.length === 0 ? (
-        <Alert severity="info">No learners are enrolled in this course yet.</Alert>
+        <Alert severity="info">No students are enrolled in this course yet.</Alert>
       ) : (
         <>
           <dl className={styles.summary}>
-            <div><dt>Learners</dt><dd>{learners.length}</dd></div>
+            <div><dt>Students</dt><dd>{learners.length}</dd></div>
             {average !== null && <div><dt>Average progress</dt><dd>{average}%</dd></div>}
             <div><dt>Not visited in {INACTIVE_DAYS / 7} weeks</dt><dd>{inactive}</dd></div>
           </dl>
 
           <FormControlLabel className={styles.filter}
             control={<Checkbox checked={onlyInactive} onChange={(e) => setOnlyInactive(e.target.checked)} />}
-            label={`Only show learners who haven't visited in ${INACTIVE_DAYS / 7} weeks`} />
+            label={`Only show students who haven't visited in ${INACTIVE_DAYS / 7} weeks`} />
 
           {/* Announced to screen readers when the filter changes. */}
           <p role="status" className={common.muted}>
-            Showing {rows.length} of {learners.length} learner{learners.length === 1 ? '' : 's'}
+            Showing {rows.length} of {learners.length} student{learners.length === 1 ? '' : 's'}
           </p>
 
           <TableContainer component={Paper} elevation={0} className={common.softShadow}>
             <Table>
-              <caption className="visually-hidden">Learners in {course.fullname}. Select a column heading to sort, or a name to send that learner a message.</caption>
+              <caption className="visually-hidden">Students in {course.fullname}. Select a column heading to sort, or a name to send that student a message.</caption>
               <TableHead>
                 <TableRow>
                   {COLUMNS.map(({ key, label, firstDirection }) => {

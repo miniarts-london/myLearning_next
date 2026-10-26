@@ -26,6 +26,15 @@ export interface CourseUser {
   lastcourseaccess?: number; // Unix seconds; 0 or missing = never
 }
 
+// A user record from core_user_get_users_by_field. Email may be blank when Moodle won't share it.
+export interface MoodleUserProfile {
+  id: number;
+  fullname?: string;
+  email?: string;
+  lastaccess?: number; // Unix seconds; 0 or missing = never
+  suspended?: boolean | number;
+}
+
 // Moodle messaging (core_message_*).
 export interface MoodleConversationMember {
   id: number;

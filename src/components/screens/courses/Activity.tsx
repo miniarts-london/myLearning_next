@@ -1,6 +1,5 @@
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
-import Breadcrumbs from '@mui/material/Breadcrumbs';
 import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
 import Link from '@mui/material/Link';
@@ -9,13 +8,12 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { SafeHtml } from '@/components/SafeHtml';
-import { CompletionButton } from '@/components/CompletionButton';
-import { activityHref } from '@/lib/links';
-import { AssignmentSubmission } from '@/components/AssignmentSubmission';
+import { CompletionButton } from '@/components/screens/courses/CompletionButton';
+import { activityHref, submissionsHref } from '@/lib/links';
+import { AssignmentSubmission } from '@/components/screens/courses/AssignmentSubmission';
 import type { AssignmentView } from '@/lib/assignment';
 import type { Course, CourseModule } from '@/lib/types';
 import styles from '@/css/Activity.module.css';
-import common from '@/css/common.module.css';
 
 // What the page fetched for this activity, depending on its type.
 export type ActivityDetail =
@@ -36,11 +34,8 @@ interface ActivityScreenProps {
 export function ActivityScreen({ course, activity, detail, prev, next, forLearner = true }: ActivityScreenProps) {
   return (
     <>
-      <Breadcrumbs className={common.breadcrumbs}>
-        <Link href="/dashboard">Dashboard</Link>
-        <Link href={`/courses/${course.id}`}>{course.fullname}</Link>
-      </Breadcrumbs>
-      <Typography variant="h1" className={common.pageTitle}>{activity.name}</Typography>
+      {/* Shown under the course name and tabs (the shared course layout), so it's the second-level heading. */}
+      <Typography variant="h4" component="h2" className={styles.title}>{activity.name}</Typography>
 
       <Box component="article" className={styles.article}>
         <ActivityBody detail={detail} courseid={course.id} cmid={activity.id} />
@@ -116,7 +111,7 @@ function ActivityBody({ detail, courseid, cmid }: { detail: ActivityDetail; cour
           {!detail.forLearner ? (
             // Teachers: the Submissions page here, or Moodle's own grader (for rubrics, scales…).
             <div className={styles.teacherActions}>
-              <Button href={`/courses/${courseid}/activities/${cmid}/submissions`} variant="contained" color="primary">
+              <Button href={submissionsHref(courseid, cmid)} variant="contained" color="primary">
                 Submissions
               </Button>
               <Button component="a" href={gradingUrl(detail.moodleUrl)} target="_blank" rel="noopener noreferrer"

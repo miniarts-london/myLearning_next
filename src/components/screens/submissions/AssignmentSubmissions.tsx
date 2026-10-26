@@ -2,7 +2,6 @@
 
 import { useActionState, useMemo, useState } from 'react';
 import Alert from '@mui/material/Alert';
-import Breadcrumbs from '@mui/material/Breadcrumbs';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import Dialog from '@mui/material/Dialog';
@@ -25,7 +24,6 @@ import Typography from '@mui/material/Typography';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { saveGrade } from '@/actions/grade';
 import { FEEDBACK_MAX, formatGrade, MARKING_STATUS_LABEL, needsGrading, type GradeState, type SubmissionRow } from '@/lib/marking';
-import type { Course } from '@/lib/types';
 import common from '@/css/common.module.css';
 import styles from '@/css/Submissions.module.css';
 
@@ -34,16 +32,17 @@ type Filter = 'all' | 'needs' | 'submitted' | 'missing';
 const when = (s: number) => new Date(s * 1000).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Europe/London' });
 
 interface Props {
-  course: Course;
+  courseid: number;
   cmid: number;
   assignmentName: string;
   maxGrade: number | null; // null: not graded in points here (scale, rubric…): grade in Moodle
   rows: SubmissionRow[];
-  loadFailed: boolean;
   gradingUrl: string;
 }
 
-export function SubmissionsScreen({ course, cmid, assignmentName, maxGrade, rows, loadFailed, gradingUrl }: Props) {
+// One assignment's submissions: who has handed in, their work, and quick grading for points-graded
+// assignments. Shown in a drawer on the course's Assignments tab.
+export function AssignmentSubmissions({ courseid, cmid, assignmentName, maxGrade, rows, gradingUrl }: Props) {
   const [filter, setFilter] = useState<Filter>('all');
   const [open, setOpen] = useState<SubmissionRow | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
@@ -59,86 +58,73 @@ export function SubmissionsScreen({ course, cmid, assignmentName, maxGrade, rows
 
   return (
     <>
-      <Breadcrumbs className={common.breadcrumbs}>
-        <Link href="/dashboard">Dashboard</Link>
-        <Link href={`/courses/${course.id}`}>{course.fullname}</Link>
-        <Link href={`/courses/${course.id}/activities/${cmid}`}>{assignmentName}</Link>
-      </Breadcrumbs>
-      <Typography variant="h1" className={common.pageTitle}>Submissions</Typography>
+      <dl className={styles.summary}>
+        <div><dt>Students</dt><dd>{rows.length}</dd></div>
+        <div><dt>Submitted</dt><dd>{counts.submitted}</dd></div>
+        <div><dt>To grade</dt><dd>{counts.needs}</dd></div>
+      </dl>
 
-      {loadFailed ? (
-        <Alert severity="warning">The submissions couldn&apos;t be loaded from Moodle. Try again later, or open them in Moodle.</Alert>
-      ) : (
-        <>
-          <dl className={styles.summary}>
-            <div><dt>Learners</dt><dd>{rows.length}</dd></div>
-            <div><dt>Submitted</dt><dd>{counts.submitted}</dd></div>
-            <div><dt>To grade</dt><dd>{counts.needs}</dd></div>
-          </dl>
-
-          {maxGrade === null && (
-            <Alert severity="info" className={styles.notice}>
-              This assignment isn&apos;t graded in points (it may use a scale or a rubric), so grade it in Moodle.
-            </Alert>
-          )}
-
-          <div className={styles.toolbar}>
-            <ToggleButtonGroup size="small" exclusive value={filter} onChange={(_, v: Filter | null) => v && setFilter(v)} aria-label="Show">
-              <ToggleButton value="all">All ({rows.length})</ToggleButton>
-              <ToggleButton value="needs">To grade ({counts.needs})</ToggleButton>
-              <ToggleButton value="submitted">Submitted ({counts.submitted})</ToggleButton>
-              <ToggleButton value="missing">Not submitted ({counts.missing})</ToggleButton>
-            </ToggleButtonGroup>
-            <Button component="a" href={gradingUrl} target="_blank" rel="noopener noreferrer" color="secondary" size="small" endIcon={<OpenInNewIcon />}>
-              Grade in Moodle<span className="visually-hidden"> (opens in a new tab)</span>
-            </Button>
-          </div>
-
-          <p role="status" className={common.muted}>Showing {shown.length} of {rows.length}</p>
-
-          <TableContainer component={Paper} elevation={0} className={common.softShadow}>
-            <Table>
-              <caption className="visually-hidden">Submissions for {assignmentName}</caption>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Learner</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Last changed</TableCell>
-                  <TableCell>Grade</TableCell>
-                  <TableCell><span className="visually-hidden">Actions</span></TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {shown.map((r) => (
-                  <TableRow key={r.userid}>
-                    <TableCell component="th" scope="row" className={styles.name}>{r.name}</TableCell>
-                    <TableCell>
-                      <Chip size="small" label={MARKING_STATUS_LABEL[r.status]}
-                        color={r.status === 'submitted' ? 'success' : r.status === 'draft' ? 'warning' : 'default'}
-                        variant={r.status === 'submitted' ? 'filled' : 'outlined'} />
-                    </TableCell>
-                    <TableCell>{r.submittedAt ? when(r.submittedAt) : <span className={common.muted}>—</span>}</TableCell>
-                    <TableCell>
-                      {r.grade !== null
-                        ? `${formatGrade(r.grade)}${maxGrade ? ` / ${formatGrade(maxGrade)}` : ''}`
-                        : <span className={common.muted}>Not graded</span>}
-                    </TableCell>
-                    <TableCell align="right">
-                      <Button size="small" variant={needsGrading(r) ? 'contained' : 'outlined'} color={needsGrading(r) ? 'primary' : 'secondary'}
-                        onClick={() => setOpen(r)} aria-label={`${maxGrade ? 'View and grade' : 'View'} ${r.name}'s submission`}>
-                        {maxGrade ? (r.grade === null ? 'Grade' : 'Regrade') : 'View'}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </>
+      {maxGrade === null && (
+        <Alert severity="info" className={styles.notice}>
+          This assignment isn&apos;t graded in points (it may use a scale or a rubric), so grade it in Moodle.
+        </Alert>
       )}
 
+      <div className={styles.toolbar}>
+        <ToggleButtonGroup size="small" exclusive value={filter} onChange={(_, v: Filter | null) => v && setFilter(v)} aria-label="Show">
+          <ToggleButton value="all">All ({rows.length})</ToggleButton>
+          <ToggleButton value="needs">To grade ({counts.needs})</ToggleButton>
+          <ToggleButton value="submitted">Submitted ({counts.submitted})</ToggleButton>
+          <ToggleButton value="missing">Not submitted ({counts.missing})</ToggleButton>
+        </ToggleButtonGroup>
+        <Button component="a" href={gradingUrl} target="_blank" rel="noopener noreferrer" color="secondary" size="small" endIcon={<OpenInNewIcon />}>
+          Grade in Moodle<span className="visually-hidden"> (opens in a new tab)</span>
+        </Button>
+      </div>
+
+      <p role="status" className={common.muted}>Showing {shown.length} of {rows.length}</p>
+
+      <TableContainer component={Paper} elevation={0} className={common.softShadow}>
+        <Table>
+          <caption className="visually-hidden">Submissions for {assignmentName}</caption>
+          <TableHead>
+            <TableRow>
+              <TableCell>Student</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Last changed</TableCell>
+              <TableCell>Grade</TableCell>
+              <TableCell><span className="visually-hidden">Actions</span></TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {shown.map((r) => (
+              <TableRow key={r.userid}>
+                <TableCell component="th" scope="row" className={styles.name}>{r.name}</TableCell>
+                <TableCell>
+                  <Chip size="small" label={MARKING_STATUS_LABEL[r.status]}
+                    color={r.status === 'submitted' ? 'success' : r.status === 'draft' ? 'warning' : 'default'}
+                    variant={r.status === 'submitted' ? 'filled' : 'outlined'} />
+                </TableCell>
+                <TableCell>{r.submittedAt ? when(r.submittedAt) : <span className={common.muted}>—</span>}</TableCell>
+                <TableCell>
+                  {r.grade !== null
+                    ? `${formatGrade(r.grade)}${maxGrade ? ` / ${formatGrade(maxGrade)}` : ''}`
+                    : <span className={common.muted}>Not graded</span>}
+                </TableCell>
+                <TableCell align="right">
+                  <Button size="small" variant={needsGrading(r) ? 'contained' : 'outlined'} color={needsGrading(r) ? 'primary' : 'secondary'}
+                    onClick={() => setOpen(r)} aria-label={`${maxGrade ? 'View and grade' : 'View'} ${r.name}'s submission`}>
+                    {maxGrade ? (r.grade === null ? 'Grade' : 'Regrade') : 'View'}
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
       {open && (
-        <GradeDialog key={open.userid} row={open} courseid={course.id} cmid={cmid} maxGrade={maxGrade}
+        <GradeDialog key={open.userid} row={open} courseid={courseid} cmid={cmid} maxGrade={maxGrade}
           onClose={() => setOpen(null)} onSaved={(m) => { setOpen(null); setSaved(m); }} />
       )}
       <Snackbar open={saved !== null} autoHideDuration={5000} onClose={() => setSaved(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}>
@@ -192,7 +178,7 @@ function GradeDialog({ row, courseid, cmid, maxGrade, onClose, onSaved }: {
                 defaultValue={row.grade ?? ''} variant="outlined" className={styles.gradeField}
                 slotProps={{ htmlInput: { min: 0, max: maxGrade, step: 0.01 } }} />
               <TextField name="feedback" label="Feedback (optional)" multiline minRows={3} fullWidth variant="outlined"
-                helperText="The learner sees this with their grade, in Moodle and in this app."
+                helperText="The student sees this with their grade, in Moodle and in this app."
                 slotProps={{ htmlInput: { maxLength: FEEDBACK_MAX } }} />
               {state.ok === false && <Alert severity="error" role="alert">{state.message}</Alert>}
             </div>

@@ -1,11 +1,11 @@
 import Alert from '@mui/material/Alert';
 import Link from '@mui/material/Link';
 import Typography from '@mui/material/Typography';
-import { CourseCard } from '@/components/CourseCard';
-import { CourseGrid } from '@/components/CourseGrid';
+import { CourseCard } from '@/components/screens/dashboard/CourseCard';
+import { CourseGrid } from '@/components/screens/dashboard/CourseGrid';
 import { SectionTitle } from '@/components/SectionTitle';
-import { UpNext } from '@/components/UpNext';
-import { UpcomingEvents } from '@/components/UpcomingEvents';
+import { UpNext } from '@/components/screens/dashboard/UpNext';
+import { UpcomingEvents } from '@/components/screens/dashboard/UpcomingEvents';
 import type { EventItem } from '@/lib/events';
 import type { EnrolledCourse } from '@/lib/types';
 import type { UpNextItem } from '@/lib/upNext';

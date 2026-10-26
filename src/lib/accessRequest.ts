@@ -20,3 +20,11 @@ export function accessRequestText(opts: { learner: string; course: string; cours
     `\nTo enrol them, open the course's participants page: ${opts.participantsUrl}`,
   ].filter(Boolean).join('\n');
 }
+
+// Who to ask, in order: the support user first, then the other admins, each once.
+export function recipientOrder(supportId: number, adminIds: Iterable<number>): number[] {
+  return [...new Set([supportId, ...adminIds])];
+}
+
+// Shown when no admin could receive the request (usually their Moodle message preferences).
+export const NO_ADMIN_REACHABLE = "Your request couldn't be sent: the administrator can't receive messages at the moment. Please try again later.";

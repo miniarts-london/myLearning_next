@@ -56,3 +56,6 @@ __pycache__/
 
 # Python virtual environments (anywhere)
 .venv/
+
+# Seating plans and notes saved by this app (Moodle has no room layout)
+/data/

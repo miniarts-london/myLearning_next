@@ -1,0 +1,141 @@
+.intro { max-width: 42rem; margin-top: -.75rem; }
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 28rem;
+  margin: 1.5rem 0;
+}
+
+.columns {
+  display: grid;
+  gap: 1.5rem;
+}
+@media (min-width: 960px) {
+  .columns { grid-template-columns: 16.5rem minmax(0, 1fr); align-items: start; }
+}
+
+.sideTitle { display: block; margin-bottom: .5rem; }
+
+.peopleForm { display: flex; flex-direction: column; }
+.peopleField { margin-top: 2rem; }
+.peopleField :global(.MuiInputLabel-root) {
+  font-size: .75rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--muted);
+}
+.peopleField :global(.MuiInputLabel-root.MuiInputLabel-formControl.MuiInputLabel-shrink) {
+  transform: translate(0, -1.15rem) scale(1);
+}
+.peopleField :global(.MuiInputLabel-root.MuiInputLabel-formControl.Mui-focused) { color: var(--primary); }
+
+.roomList { list-style: none; margin: 0 0 1.5rem; padding: 0; }
+.roomButton {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-left: 3px solid transparent;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  padding: .65rem .75rem;
+  cursor: pointer;
+}
+.roomButton[aria-current="true"] { border-left-color: var(--primary); background: #faf6f8; }
+.roomButton:hover { background: #faf6f8; }
+.roomName { display: block; font-weight: 600; }
+.roomMeta { display: block; margin-top: .15rem; color: var(--muted); font-size: .75rem; }
+
+.block { display: flex; flex-direction: column; gap: .75rem; margin-top: 1.25rem; }
+.personList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .35rem; }
+.person {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--line);
+  background: #fff;
+  font: inherit;
+  color: inherit;
+  padding: .45rem .65rem;
+  cursor: pointer;
+}
+.person[aria-pressed="true"] { border-color: var(--primary); }
+.youMark { display: block; font-size: .6875rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--mui-palette-success-main); }
+
+.workspace { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+.viewOnly { margin: 0; }
+
+.canvasScroll { overflow-x: auto; }
+.room { min-width: 36rem; background: #fff; box-shadow: 0 0 1.25rem rgba(0, 0, 0, .06); }
+.front {
+  margin: 0;
+  padding: .45rem .75rem;
+  background: var(--primary);
+  color: var(--on-primary);
+  text-align: center;
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.floor {
+  position: relative;
+  height: 32rem;
+  background-color: #f6f4f1;
+  background-image:
+    linear-gradient(rgba(0, 0, 0, .04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, .04) 1px, transparent 1px);
+  background-size: 2.5rem 2.5rem;
+}
+
+.desk { position: absolute; width: 7.25rem; transform: translate(-50%, -50%); z-index: 1; }
+.deskDragging { z-index: 3; }
+.desk button {
+  width: 100%;
+  min-height: 3.4rem;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  padding: .4rem .45rem;
+  box-shadow: 0 .35rem 0 #e4e0db;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+.editable .desk button { cursor: grab; }
+.deskYou button { box-shadow: 0 .35rem 0 var(--mui-palette-success-main); }
+.deskSelected button { border-color: var(--primary); }
+.deskName { display: block; font-size: .8125rem; font-weight: 600; line-height: 1.3; }
+
+.hint { margin: 0; }
+
+.drawerPaper { width: min(24rem, 100vw); }
+.drawerHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; padding: 1rem 1rem 0 1.25rem; }
+.detailHeading { display: flex; align-items: center; gap: .25rem; min-width: 0; }
+.drawerBody { padding: .25rem 1.25rem 1.5rem; }
+.detailTitle { margin: 0; }
+.detailMeta { margin: 0 0 .75rem; }
+.facts { margin: 0 0 .25rem; }
+.facts > div { margin: 0 0 .85rem; }
+.facts dt { font-size: .75rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.facts dd { margin: .2rem 0 0; }
+.factList { margin: 0; padding-left: 1.1rem; }
+.emailForm { display: flex; flex-direction: column; align-items: flex-start; gap: .75rem; width: 100%; margin: 0 0 1.25rem; }
+.messageError { margin-top: .75rem; }
+.actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+
+.ghost {
+  position: fixed;
+  z-index: 30;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  min-width: 6rem;
+  padding: .4rem .6rem;
+  background: #fff;
+  border: 1px solid var(--primary);
+  box-shadow: 0 .35rem 0 #e4e0db;
+  font-size: .8125rem;
+  font-weight: 600;
+}

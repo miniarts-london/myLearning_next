@@ -3,7 +3,7 @@ import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
 import { LoginForm } from '@/app/login/LoginForm';
 import styles from '@/css/Login.module.css';
-import { FallingLeaves } from '@/components/FallingLeaves';
+import { FallingLeaves } from '@/components/homeAnimation/FallingLeaves';
 
 // The login page's background. "horses": black and white, with the herd on the horizon at the
 // bottom and grey leaves falling. "autumn": warm colours, sunbeams and autumn leaves.

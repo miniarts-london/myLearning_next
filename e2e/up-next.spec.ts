@@ -38,7 +38,7 @@ test('Up next links open the activity inside the app', async ({ page }) => {
   await loginAsStudent(page);
   await upNext(page).getByRole('link', { name: 'Semantics quiz' }).click();
   await expect(page).toHaveURL(/\/courses\/2\/activities\/22$/);
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Semantics quiz');
+  await expect(page.getByRole('heading', { level: 2, name: 'Semantics quiz' })).toBeVisible();
 });
 
 test('finishing an activity takes it off Up next', async ({ page }) => {

@@ -36,7 +36,7 @@ async function CourseContent({ params }: Props) {
       }
       throw e;
     }),
-    canSeeLearners(session.token, session.userid, courseid), // Teachers and admins get a "Learners" link
+    canSeeLearners(session.token, session.userid, courseid), // Teachers and admins get Moodle's link, not "contact the admin"
     teachesCourse(session.token, session.userid, courseid),  // Teachers get no progress ring of their own
   ]);
   if (!course) {
@@ -55,7 +55,6 @@ async function CourseContent({ params }: Props) {
       sections={sections}
       progress={!teaches && tracked.length > 0 ? (done / tracked.length) * 100 : null}
       moodleCourseUrl={moodleUrl(`/course/view.php?id=${courseid}`)}
-      learnersHref={staff ? `/courses/${courseid}/learners` : undefined}
       canRequestAccess={!staff}
       forLearner={!teaches}
     />
