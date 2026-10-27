@@ -26,5 +26,6 @@
 /* Teachers on an assignment: Submissions, and Moodle's grader. */
 .teacherActions { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin-top: 1rem; }
 
-/* The activity's name, under the course name and tabs. */
+/* "< Back" and the activity's name, under the course name and tabs. */
+.backLink { display: inline-block; font-size: .875rem; margin-bottom: .25rem; }
 .title { margin-bottom: 1.5rem; }

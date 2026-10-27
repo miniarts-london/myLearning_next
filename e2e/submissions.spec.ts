@@ -212,4 +212,13 @@ test('an activity opened from the syllabus loads under the same course name and 
   await syllabus.click();
   await expect(page).toHaveURL(/\/courses\/2$/);
   await expect(syllabus).toHaveAttribute('aria-current', 'page');
+
+  // "< Back" above the activity's title also returns to the syllabus, from the course index too.
+  await page.locator('#course-index').getByRole('link', { name: 'Use the right element' }).click();
+  await expect(page.getByRole('heading', { level: 2, name: 'Use the right element' })).toBeVisible();
+  expect(await title.evaluate((el) => (el as HTMLElement & { kept?: boolean }).kept)).toBe(true); // Not reloaded
+  await page.getByRole('link', { name: 'Back to the syllabus' }).click();
+  await expect(page).toHaveURL(/\/courses\/2$/);
+  await expect(page.getByRole('region', { name: 'Why accessibility matters' })).toBeVisible();
+  expect(await title.evaluate((el) => (el as HTMLElement & { kept?: boolean }).kept)).toBe(true);
 });

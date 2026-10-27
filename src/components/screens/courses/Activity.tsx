@@ -34,8 +34,12 @@ interface ActivityScreenProps {
 export function ActivityScreen({ course, activity, detail, prev, next, forLearner = true }: ActivityScreenProps) {
   return (
     <>
-      {/* Shown under the course name and tabs (the shared course layout), so it's the second-level heading. */}
-      <Typography variant="h4" component="h2" className={styles.title}>{activity.name}</Typography>
+      {/* Under the course name and tabs (the shared course layout): Back to the syllabus, then the
+          activity's title as the second-level heading, smaller than the course name. */}
+      <Link href={`/courses/${course.id}`} className={styles.backLink}>
+        <span aria-hidden>&lt; </span>Back<span className="visually-hidden"> to the syllabus</span>
+      </Link>
+      <Typography variant="h5" component="h2" className={styles.title}>{activity.name}</Typography>
 
       <Box component="article" className={styles.article}>
         <ActivityBody detail={detail} courseid={course.id} cmid={activity.id} />
