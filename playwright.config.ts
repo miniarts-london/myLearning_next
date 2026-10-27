@@ -61,6 +61,7 @@ export default defineConfig({
         MOODLE_URL: `http://localhost:${MOODLE_PORT}`,
         MOODLE_SERVICE: 'moodle_mobile_app',
         MOODLE_SUPPORT_USERID: '2',             // "Ask for access" requests go to the mock's admin
+        ROOMS_PGLITE_DIR: 'memory://',          // Room plans in a throwaway in-process Postgres
         MOODLE_ADMIN_USERIDS: '9',              // …or, if they can't receive messages, to a second admin
         ACCESS_REQUEST_COOLDOWN_SECONDS: '0',   // No once-a-day limit, so tests (and retries) can repeat
         DEMO_TEACHER_USERNAME: 'teacher',       // The login page's demo buttons (mock accounts)

@@ -1,6 +1,5 @@
 import 'server-only';
-import { existsSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import path from 'node:path';
 import { adminUserIds } from './accessRequest.server';
 import { decodeEntities } from './entities';
@@ -9,7 +8,8 @@ import type { SessionPayload } from './session';
 import { moodle, MoodleError } from './moodle';
 import { teachesCourse } from './staff.server';
 import type { CourseUser } from './types';
-import { openRoomStore, type RoomStore } from './rooms.db';
+import { openRoomStore, pgliteDb, postgresDb, type RoomStore, type Sql } from './rooms.db';
+import { readLegacyRooms } from './rooms.legacy';
 import {
   GUEST_EMAIL_MAX,
   GUEST_NAME_MAX,
@@ -23,6 +23,7 @@ import {
   cleanGuestEmail,
   cleanLabel,
   cleanNote,
+  cleanStartsAt,
   desksForPeople,
   freePosition,
   mergeCourses,
@@ -45,26 +46,32 @@ import {
   type RoomResult,
 } from './rooms';
 
-// Moodle has no seating plan. Layouts and notes live in this app's database. The JSON file is only
-// read once, the first time the database is created, so an existing plan is not lost.
-const FILE = path.join(process.cwd(), 'data', 'rooms.db');
-const LEGACY = path.join(process.cwd(), 'data', 'rooms.json');
+// Moodle has no seating plan. Layouts and notes live in this app's own Postgres database:
+// Neon in production (DATABASE_URL, which Vercel's Neon integration sets). Without DATABASE_URL,
+// for local work, Postgres runs inside the app (PGlite) and keeps its data in data/pglite;
+// ROOMS_PGLITE_DIR changes where ('memory://' for tests). The first time the database is empty,
+// plans kept in the older files (data/rooms.db, data/rooms.json) are copied in.
+const LEGACY_SQLITE = path.join(process.cwd(), 'data', 'rooms.db');
+const LEGACY_JSON = path.join(process.cwd(), 'data', 'rooms.json');
 
-let store: RoomStore | undefined;
 let opening: Promise<RoomStore> | undefined;
 
 function roomsStore(): Promise<RoomStore> {
-  if (store) return Promise.resolve(store);
   if (!opening) {
     opening = (async () => {
-      const created = !existsSync(FILE);
-      const next = openRoomStore(FILE);
-      if (created || !next.ready()) {
-        next.write(await readLegacy());
-        next.markReady();
+      const url = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
+      const db = url
+        ? await postgresDb(url)
+        : await pgliteDb(process.env.ROOMS_PGLITE_DIR ?? path.join(process.cwd(), 'data', 'pglite'));
+      const store = await openRoomStore(db);
+      if (!(await store.ready())) {
+        await store.locked(async (tx) => {
+          const legacy = await readLegacyRooms(LEGACY_SQLITE, LEGACY_JSON, isRoom);
+          if ((await store.read(tx)).length === 0 && legacy.length > 0) await store.write(legacy, tx);
+          await store.markReady(tx);
+        });
       }
-      store = next;
-      return next;
+      return store;
     })().catch((error: unknown) => {
       opening = undefined;
       throw error;
@@ -73,12 +80,16 @@ function roomsStore(): Promise<RoomStore> {
   return opening;
 }
 
-let queue: Promise<unknown> = Promise.resolve();
+// A change to the rooms reads, edits and saves them in one transaction holding a database lock,
+// so two saves (even on different servers) can't overwrite each other. Reads and writes inside
+// it use that transaction.
+const current = new AsyncLocalStorage<Sql>();
 
-function withLock<T>(task: () => Promise<T>): Promise<T> {
-  const run = queue.then(task, task);
-  queue = run.then(() => undefined, () => undefined);
-  return run;
+async function withLock<T>(task: () => Promise<T>): Promise<T> {
+  const tx = current.getStore();
+  if (tx) return task(); // Already inside one
+  const store = await roomsStore();
+  return store.locked((sql) => current.run(sql, task));
 }
 
 function isDesk(value: unknown): value is RoomRecord['desks'][number] {
@@ -110,26 +121,16 @@ function isRoom(value: unknown): value is RoomRecord {
     && Array.isArray(room.desks) && room.desks.every(isDesk)
     && Array.isArray(room.people) && room.people.every(isPerson)
     && Array.isArray(room.notes) && room.notes.every(isNote)
-    && typeof room.updatedAt === 'string';
-}
-
-async function readLegacy(): Promise<RoomRecord[]> {
-  try {
-    const parsed: unknown = JSON.parse(await readFile(LEGACY, 'utf8'));
-    if (!parsed || typeof parsed !== 'object' || !Array.isArray((parsed as { rooms?: unknown }).rooms)) return [];
-    return (parsed as { rooms: unknown[] }).rooms.filter(isRoom);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
-    throw error;
-  }
+    && typeof room.updatedAt === 'string'
+    && (room.startsAt === undefined || typeof room.startsAt === 'string');
 }
 
 async function readRooms(): Promise<RoomRecord[]> {
-  return (await roomsStore()).read();
+  return (await roomsStore()).read(current.getStore());
 }
 
 async function writeRooms(rooms: RoomRecord[]): Promise<void> {
-  (await roomsStore()).write(rooms);
+  await (await roomsStore()).write(rooms, current.getStore());
 }
 
 async function updateRooms(change: (rooms: RoomRecord[]) => Promise<{ rooms: RoomRecord[]; error?: string }>): Promise<RoomResult> {
@@ -291,7 +292,7 @@ function denied(result: { access: RoomAccess; room: RoomRecord; people: RoomPers
   return 'ok' in result;
 }
 
-export async function createRoomRecord(session: SessionPayload, input: { name: string; kind: string; courseId?: number }): Promise<RoomResult> {
+export async function createRoomRecord(session: SessionPayload, input: { name: string; kind: string; courseId?: number; startsAt?: string }): Promise<RoomResult> {
   const { access } = await loadAccess(session);
   if (!access.isAdmin && access.staffCourseIds.length === 0) {
     return { ok: false, message: 'Only teachers can arrange a room.' };
@@ -306,6 +307,7 @@ export async function createRoomRecord(session: SessionPayload, input: { name: s
 
   let people: RoomPerson[] = [];
   let courseId: number | null = null;
+  let startsAt: string | undefined;
   if (input.kind === 'class') {
     if (!access.staffCourseIds.includes(Number(input.courseId))) {
       return { ok: false, message: 'Choose a class you teach.' };
@@ -315,6 +317,10 @@ export async function createRoomRecord(session: SessionPayload, input: { name: s
     if (!listed) return { ok: false, message: "That class list couldn't be loaded." };
     if (listed.length > ROOM_PEOPLE_MAX) return { ok: false, message: `A room can hold ${ROOM_PEOPLE_MAX} people. This class has more.` };
     people = listed;
+  } else if (input.startsAt) {
+    const when = cleanStartsAt(input.startsAt);
+    if (!when.ok) return { ok: false, message: 'Add a date and time.' };
+    startsAt = when.value;
   }
 
   const room: RoomRecord = {
@@ -327,6 +333,7 @@ export async function createRoomRecord(session: SessionPayload, input: { name: s
     desks: desksForPeople(people),
     notes: [],
     updatedAt: new Date().toISOString(),
+    ...(startsAt ? { startsAt } : {}),
   };
   const saved = await updateRooms(async (rooms) => ({ rooms: [...rooms, room] }));
   return saved.ok ? { ok: true, roomId: room.id } : saved;

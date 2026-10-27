@@ -44,6 +44,8 @@ export interface RoomRecord {
   people: RoomPerson[];
   notes: RoomNote[];
   updatedAt: string;
+  /** A meeting's date and time, as YYYY-MM-DDTHH:mm. Class rooms do not have one. */
+  startsAt?: string;
 }
 
 export interface RoomAccess {
@@ -85,6 +87,7 @@ export interface RoomView {
   courseName: string | null;
   canEdit: boolean;
   updatedAt: string;
+  startsAt: string | null;
   seats: SeatView[];
   unseated: UnseatedView[];
 }
@@ -237,6 +240,36 @@ export function cleanGuestEmail(value: string): { ok: true; value: string } | { 
   return { ok: true, value: trimmed };
 }
 
+/** A meeting time from a datetime field. The value is the wall-clock time the teacher picked. */
+export function cleanStartsAt(value: string): { ok: true; value: string } | { ok: false } {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value.trim());
+  if (!match) return { ok: false };
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  if (month < 1 || month > 12 || hour > 23 || minute > 59) return { ok: false };
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return { ok: false };
+  return { ok: true, value: `${match[1]}-${match[2]}-${match[3]}T${match[4]}:${match[5]}` };
+}
+
+/** "Tue 27 Oct, 14:30", from a stored meeting time. */
+export function roomWhenLabel(startsAt: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(startsAt);
+  if (!match) return '';
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5])));
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'UTC',
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
+
 /** Empty is allowed: it clears the note. */
 export function cleanNote(value: string): { ok: true; value: string } | { ok: false } {
   const trimmed = value.trim();
@@ -302,6 +335,7 @@ export function toRoomView(room: RoomRecord, viewerId: number, canEdit: boolean,
     courseName,
     canEdit,
     updatedAt: room.updatedAt,
+    startsAt: room.kind === 'meeting' ? (room.startsAt ?? null) : null,
     seats,
     unseated: room.people.filter((person) => !seated.has(person.id)).map(spot),
   };
