@@ -23,6 +23,8 @@
     "@mui/icons-material": "^9.5.0",
     "@mui/material": "^9.5.0",
     "@mui/material-nextjs": "^9.5.0",
+    "@mui/x-date-pickers": "^9.16.0",
+    "dayjs": "^1.11.23",
     "jose": "^6.2.12",
     "next": "16.4.2",
     "pg": "^8.23.1",

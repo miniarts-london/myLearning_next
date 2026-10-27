@@ -5,11 +5,11 @@ import { loadRoomPage } from '@/lib/rooms.server';
 import { Loading } from '@/components/Loading';
 import { RoomLayoutScreen } from '@/components/screens/rooms/RoomLayout';
 
-export const metadata: Metadata = { title: 'Class rooms' };
+export const metadata: Metadata = { title: 'Classrooms' };
 
 export default function RoomLayoutPage() {
   return (
-    <Suspense fallback={<Loading label="Loading class rooms…" />}>
+    <Suspense fallback={<Loading label="Loading classrooms…" />}>
       <RoomLayout />
     </Suspense>
   );

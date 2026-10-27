@@ -5,6 +5,7 @@ import { lastVisitLabel } from './learners';
 // class, or guests typed by name). Positions are percentages of the floor, 4–96.
 
 export const ROOM_NAME_MAX = 80;
+export const LOCATION_MAX = 80;
 export const GUEST_NAME_MAX = 80;
 export const GUEST_EMAIL_MAX = 254;
 export const NOTE_MAX = 500;
@@ -44,8 +45,10 @@ export interface RoomRecord {
   people: RoomPerson[];
   notes: RoomNote[];
   updatedAt: string;
-  /** A meeting's date and time, as YYYY-MM-DDTHH:mm. Class rooms do not have one. */
+  /** Date and time, as YYYY-MM-DDTHH:mm. Empty when none was set. */
   startsAt?: string;
+  /** Where the room meets. Empty when none was set. */
+  location?: string;
 }
 
 export interface RoomAccess {
@@ -88,6 +91,7 @@ export interface RoomView {
   canEdit: boolean;
   updatedAt: string;
   startsAt: string | null;
+  location: string | null;
   seats: SeatView[];
   unseated: UnseatedView[];
 }
@@ -255,6 +259,30 @@ export function cleanStartsAt(value: string): { ok: true; value: string } | { ok
   return { ok: true, value: `${match[1]}-${match[2]}-${match[3]}T${match[4]}:${match[5]}` };
 }
 
+/** Date and time from the two fields. Both empty is fine. One without the other is not. */
+export function cleanWhen(date: string, time: string): { ok: true; value: string } | { ok: false; reason: 'incomplete' | 'bad' } {
+  const day = date.trim();
+  const clock = time.trim();
+  if (!day && !clock) return { ok: true, value: '' };
+  if (!day || !clock) return { ok: false, reason: 'incomplete' };
+  const when = cleanStartsAt(`${day}T${clock}`);
+  return when.ok ? when : { ok: false, reason: 'bad' };
+}
+
+/** Empty clears the date and time. Anything else must be a complete wall-clock value. */
+export function cleanOptionalStartsAt(value: string): { ok: true; value: string } | { ok: false } {
+  const trimmed = value.trim();
+  if (!trimmed) return { ok: true, value: '' };
+  return cleanStartsAt(trimmed);
+}
+
+/** Empty clears a location. */
+export function cleanLocation(value: string): { ok: true; value: string } | { ok: false } {
+  const trimmed = value.trim().replace(/\s+/g, ' ');
+  if (trimmed.length > LOCATION_MAX) return { ok: false };
+  return { ok: true, value: trimmed };
+}
+
 /** "Tue 27 Oct, 14:30", from a stored meeting time. */
 export function roomWhenLabel(startsAt: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(startsAt);
@@ -335,7 +363,8 @@ export function toRoomView(room: RoomRecord, viewerId: number, canEdit: boolean,
     courseName,
     canEdit,
     updatedAt: room.updatedAt,
-    startsAt: room.kind === 'meeting' ? (room.startsAt ?? null) : null,
+    startsAt: room.startsAt ?? null,
+    location: room.location ?? null,
     seats,
     unseated: room.people.filter((person) => !seated.has(person.id)).map(spot),
   };
@@ -346,7 +375,7 @@ function samePerson(a: { id: string; userId?: number }, b: { id: string; userId?
   return a.id === b.id;
 }
 
-/** Class rooms this viewer can see that include the person. Meetings are not classes. */
+/** Classrooms this viewer can see that include the person. Meetings are not classes. */
 export function classesForPerson(
   rooms: RoomRecord[],
   person: { id: string; userId?: number },
@@ -358,7 +387,7 @@ export function classesForPerson(
     .sort((a, b) => a.name.localeCompare(b.name, 'en-GB') || a.id.localeCompare(b.id));
 }
 
-/** Course ids of those class rooms, so a shared class still shows when Moodle won't list every course. */
+/** Course ids of those classrooms, so a shared class still shows when Moodle won't list every course. */
 export function sharedClassCourses(
   rooms: RoomRecord[],
   person: { id: string; userId?: number },

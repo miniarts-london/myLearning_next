@@ -43,6 +43,7 @@ function meeting(): RoomRecord {
     ownerId: 2,
     updatedAt: '2026-01-03T00:00:00.000Z',
     startsAt: '2026-11-05T18:30',
+    location: 'Hall',
     people: [{ id: 'guest:2', name: 'Sam' }],
     desks: [],
     notes: [],
@@ -85,10 +86,11 @@ describe('room database', () => {
     await second.close();
   });
 
-  it('keeps only meetings\' start times', async () => {
+  it('keeps a date, time and location for a class as well as a meeting', async () => {
     const store = await openRoomStore(await pgliteDb('memory://'));
-    await store.write([{ ...room(), startsAt: '2026-11-05T09:00' }]);
-    expect((await store.read())[0]).not.toHaveProperty('startsAt');
+    const lesson = { ...room(), startsAt: '2026-11-05T09:00', location: 'Lab 2' };
+    await store.write([lesson]);
+    expect(await store.read()).toEqual([lesson]);
     await store.close();
   });
 

@@ -7,7 +7,7 @@ import styles from '@/css/NavLinks.module.css';
 const links = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/catalogue', label: 'Courses' },
-  { href: '/room-layout', label: 'Class rooms' },
+  { href: '/room-layout', label: 'Classrooms' },
 ];
 
 // A client component only so the current page can be marked with aria-current.

@@ -3,16 +3,21 @@
 import { revalidatePath } from 'next/cache';
 import { verifySession } from '@/lib/dal';
 import type { PersonLookup, RoomMessageResult, RoomResult } from '@/lib/rooms';
-import { addMeetingPerson, createRoomRecord, deleteRoomRecord, loadPersonDetails, messageRoomPerson, removeMeetingPerson, saveGuestEmailRecord, saveRoomDesks, saveRoomNote } from '@/lib/rooms.server';
+import { addMeetingPerson, createRoomRecord, deleteRoomRecord, loadPersonDetails, messageRoomPerson, removeMeetingPerson, saveGuestEmailRecord, saveRoomDesks, saveRoomNote, updateRoomDetailsRecord } from '@/lib/rooms.server';
 
 function done(result: RoomResult): RoomResult {
   if (result.ok) revalidatePath('/room-layout');
   return result;
 }
 
-export async function createRoom(input: { name: string; kind: string; courseId?: number }): Promise<RoomResult> {
+export async function createRoom(input: { name: string; kind: string; courseId?: number; startsAt?: string; location?: string }): Promise<RoomResult> {
   const session = await verifySession();
   return done(await createRoomRecord(session, input));
+}
+
+export async function saveRoomDetails(roomId: string, input: { name: string; startsAt?: string; location?: string }): Promise<RoomResult> {
+  const session = await verifySession();
+  return done(await updateRoomDetailsRecord(session, roomId, input));
 }
 
 export async function saveDesks(roomId: string, desks: { id: string; personId: string; x: number; y: number }[]): Promise<RoomResult> {

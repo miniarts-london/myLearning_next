@@ -24,6 +24,7 @@ const SCHEMA = [
     owner_id INTEGER NOT NULL,
     updated_at TEXT NOT NULL,
     starts_at TEXT,
+    location TEXT,
     sort INTEGER NOT NULL
   )`,
   `CREATE TABLE IF NOT EXISTS room_people (
@@ -73,11 +74,13 @@ export interface RoomStore {
 
 export async function openRoomStore(db: Db): Promise<RoomStore> {
   for (const statement of SCHEMA) await db.query(statement);
+  await db.query('ALTER TABLE rooms ADD COLUMN IF NOT EXISTS starts_at TEXT');
+  await db.query('ALTER TABLE rooms ADD COLUMN IF NOT EXISTS location TEXT');
 
   const store: RoomStore = {
     async read(sql: Sql = db) {
       const [rooms, people, desks, notes] = await Promise.all([
-        sql.query('SELECT id, name, kind, course_id, owner_id, updated_at, starts_at FROM rooms ORDER BY sort'),
+        sql.query('SELECT id, name, kind, course_id, owner_id, updated_at, starts_at, location FROM rooms ORDER BY sort'),
         sql.query('SELECT room_id, id, name, user_id, email FROM room_people ORDER BY room_id, sort'),
         sql.query('SELECT id, room_id, person_id, x, y FROM room_desks ORDER BY room_id, sort'),
         sql.query('SELECT room_id, person_id, text, updated_at FROM room_notes ORDER BY room_id, sort'),
@@ -95,6 +98,7 @@ export async function openRoomStore(db: Db): Promise<RoomStore> {
           ownerId: number(row.owner_id),
           updatedAt: text(row.updated_at),
           ...(typeof row.starts_at === 'string' && row.starts_at ? { startsAt: row.starts_at } : {}),
+          ...(typeof row.location === 'string' && row.location ? { location: row.location } : {}),
           people: (peopleBy.get(id) ?? []).map(personFrom),
           desks: (desksBy.get(id) ?? []).map(deskFrom),
           notes: (notesBy.get(id) ?? []).map(noteFrom),
@@ -108,8 +112,8 @@ export async function openRoomStore(db: Db): Promise<RoomStore> {
         await tx.query('DELETE FROM rooms'); // People, desks and notes go with their room (ON DELETE CASCADE).
         for (const [i, room] of rooms.entries()) {
           await tx.query(
-            'INSERT INTO rooms (id, name, kind, course_id, owner_id, updated_at, starts_at, sort) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-            [room.id, room.name, room.kind, room.courseId, room.ownerId, room.updatedAt, meetingTime(room), i],
+            'INSERT INTO rooms (id, name, kind, course_id, owner_id, updated_at, starts_at, location, sort) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+            [room.id, room.name, room.kind, room.courseId, room.ownerId, room.updatedAt, optionalText(room.startsAt), optionalText(room.location), i],
           );
           for (const [j, person] of room.people.entries()) {
             await tx.query('INSERT INTO room_people (room_id, id, name, user_id, email, sort) VALUES ($1, $2, $3, $4, $5, $6)',
@@ -212,10 +216,9 @@ function guestEmail(person: RoomPerson): string | null {
   return email ? email : null;
 }
 
-function meetingTime(room: RoomRecord): string | null {
-  if (room.kind !== 'meeting') return null;
-  const when = room.startsAt?.trim();
-  return when ? when : null;
+function optionalText(value: string | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
 }
 
 function deskFrom(row: Record<string, unknown>): RoomRecord['desks'][number] {

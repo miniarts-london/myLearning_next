@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import dayjs, { type Dayjs } from 'dayjs';
+import 'dayjs/locale/en-gb';
 import Button from '@mui/material/Button';
 import Drawer from '@mui/material/Drawer';
 import Dialog from '@mui/material/Dialog';
@@ -12,20 +14,32 @@ import FormControl from '@mui/material/FormControl';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormLabel from '@mui/material/FormLabel';
 import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
 import MenuItem from '@mui/material/MenuItem';
 import Radio from '@mui/material/Radio';
 import RadioGroup from '@mui/material/RadioGroup';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import CalendarIcon from '@mui/icons-material/CalendarTodayOutlined';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import EditIcon from '@mui/icons-material/EditOutlined';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import GroupsIcon from '@mui/icons-material/GroupsOutlined';
+import PlaceIcon from '@mui/icons-material/PlaceOutlined';
+import SchoolIcon from '@mui/icons-material/SchoolOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import ChatIcon from '@mui/icons-material/ChatBubbleOutlineOutlined';
 import SendIcon from '@mui/icons-material/Send';
-import { addPerson, createRoom, deleteRoom, messagePerson, personDetails, removePerson, saveDesks, saveGuestEmail, saveNote } from '@/actions/rooms';
+import { addPerson, createRoom, deleteRoom, messagePerson, personDetails, removePerson, saveDesks, saveGuestEmail, saveNote, saveRoomDetails } from '@/actions/rooms';
 import { MESSAGE_MAX } from '@/lib/messages';
-import { NOTE_MAX, GUEST_EMAIL_MAX, draggedSpot, freePosition, planPoint, spotFromPointer, type PersonDetails, type RoomPageData, type RoomResult, type RoomView, type SeatView, type UnseatedView } from '@/lib/rooms';
+import { NOTE_MAX, GUEST_EMAIL_MAX, LOCATION_MAX, draggedSpot, freePosition, planPoint, roomWhenLabel, spotFromPointer, type PersonDetails, type RoomPageData, type RoomResult, type RoomView, type SeatView, type UnseatedView } from '@/lib/rooms';
 import common from '@/css/common.module.css';
 import styles from '@/css/RoomLayout.module.css';
 import { Alert, Box, Paper } from '@mui/material';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 
 const ARROWS: Record<string, [number, number]> = {
   ArrowLeft: [-2, 0],
@@ -47,8 +61,44 @@ const NO_SEATS: SeatView[] = [];
 const NO_UNSEATED: UnseatedView[] = [];
 
 function roomKind(item: RoomView): string {
-  if (item.kind === 'meeting') return 'Meeting';
-  return item.courseName ? `Class · ${item.courseName}` : 'Class';
+  const kind = item.kind === 'meeting' ? 'Meeting' : (item.courseName ? `Class · ${item.courseName}` : 'Class');
+  const when = item.startsAt ? roomWhenLabel(item.startsAt) : '';
+  return [kind, when, item.location ?? ''].filter(Boolean).join(' · ');
+}
+
+function roomFor(item: RoomView): string {
+  if (item.kind === 'meeting') return 'A meeting';
+  return item.courseName ? `Class · ${item.courseName}` : 'A class';
+}
+
+function storedWhen(value: Dayjs | null, invalid: boolean): { ok: true; value: string } | { ok: false } {
+  if (invalid || (value !== null && !value.isValid())) return { ok: false };
+  if (!value) return { ok: true, value: '' };
+  return { ok: true, value: value.format('YYYY-MM-DDTHH:mm') };
+}
+
+function WhenField({ value, onChange, onInvalid }: {
+  value: Dayjs | null;
+  onChange: (value: Dayjs | null) => void;
+  onInvalid: (invalid: boolean) => void;
+}) {
+  return (
+    <DateTimePicker
+      label="Date and time"
+      value={value}
+      ampm={false}
+      format="DD/MM/YYYY HH:mm"
+      timeSteps={{ minutes: 1 }}
+      onChange={(next, context) => {
+        onChange(next);
+        onInvalid(context.validationError != null);
+      }}
+      slotProps={{
+        textField: { variant: 'standard' },
+        openPickerButton: { 'aria-label': 'Choose date and time' },
+      }}
+    />
+  );
 }
 
 function deskStyle(x: number, y: number, fromTheFront: boolean): { left: string; top: string } {
@@ -132,13 +182,23 @@ export function RoomLayoutScreen({ canCreate, courses, candidates, rooms }: Room
     setEmailDraft(guestEmail ?? '');
   }
 
-  const [creating, setCreating] = useState(canCreate && rooms.length === 0);
+  const [creating, setCreating] = useState(false);
   const [kind, setKind] = useState<'class' | 'meeting'>(courses.length > 0 ? 'class' : 'meeting');
   const [roomName, setRoomName] = useState('');
+  const [roomWhen, setRoomWhen] = useState<Dayjs | null>(null);
+  const [roomWhenInvalid, setRoomWhenInvalid] = useState(false);
+  const [roomLocation, setRoomLocation] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editWhen, setEditWhen] = useState<Dayjs | null>(null);
+  const [editWhenInvalid, setEditWhenInvalid] = useState(false);
+  const [editLocation, setEditLocation] = useState('');
   const [courseId, setCourseId] = useState(courses[0] ? String(courses[0].id) : '');
   const [guestName, setGuestName] = useState('');
   const [candidateId, setCandidateId] = useState('');
   const [confirmRoom, setConfirmRoom] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [intro, setIntro] = useState<'shown' | 'leaving' | 'gone'>('shown');
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -147,6 +207,7 @@ export function RoomLayoutScreen({ canCreate, courses, candidates, rooms }: Room
   const [draggingId, setDraggingId] = useState<string | null>(null);
 
   const floorRef = useRef<HTMLDivElement>(null);
+  const introRef = useRef<HTMLDivElement>(null);
   const drag = useRef<Drag | null>(null);
   const suppressClick = useRef(false);
   const saveGen = useRef(0);
@@ -157,6 +218,36 @@ export function RoomLayoutScreen({ canCreate, courses, candidates, rooms }: Room
   useEffect(() => () => {
     if (timer.current) clearTimeout(timer.current);
   }, []);
+
+  useEffect(() => {
+    let frame = 0;
+    const wait = window.setTimeout(() => {
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const el = introRef.current;
+      if (reduce || !el) {
+        setIntro('gone');
+        return;
+      }
+      // Lock the current height first so the text cannot wrap taller and shove the page down.
+      el.style.height = `${el.getBoundingClientRect().height}px`;
+      frame = window.requestAnimationFrame(() => {
+        frame = window.requestAnimationFrame(() => {
+          el.style.height = '0px';
+          setIntro('leaving');
+        });
+      });
+    }, 5_000);
+    return () => {
+      window.clearTimeout(wait);
+      window.cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (intro !== 'leaving') return;
+    const done = window.setTimeout(() => setIntro('gone'), 450);
+    return () => window.clearTimeout(done);
+  }, [intro]);
 
   async function persist(roomId: string, next: SeatView[]) {
     const ticket = ++saveGen.current;
@@ -222,6 +313,8 @@ export function RoomLayoutScreen({ canCreate, courses, candidates, rooms }: Room
   }
 
   function openPerson(roomId: string, personId: string) {
+    setCreating(false);
+    setEditingId(null);
     setSelectedPersonId(personId);
     const key = `${roomId}:${personId}`;
     const ticket = ++detailTicket.current;
@@ -368,83 +461,184 @@ export function RoomLayoutScreen({ canCreate, courses, candidates, rooms }: Room
     select();
   }
 
+  if (editingId && editingId !== activeId) setEditingId(null);
+
+  function beginEdit(item: RoomView) {
+    setError(null);
+    setCreating(false);
+    setSelectedPersonId(null);
+    setConfirmRoom(null);
+    setEditingId(item.id);
+    setEditName(item.name);
+    setEditWhen(item.startsAt ? dayjs(item.startsAt) : null);
+    setEditWhenInvalid(false);
+    setEditLocation(item.location ?? '');
+  }
+
+  const introCopy = canCreate
+    ? 'Arrange desks for an in-person class or a meeting. Click a person to see their details and send a message, drag the desks, and add notes.'
+    : 'View the classes and meetings you are in, and see a few details about the people in the room.';
+
   return (
-    <>
-      <Typography variant="h1" className={common.pageTitle}>Class rooms</Typography>
-      <p className={styles.intro}>
-        {canCreate
-          ? 'Arrange desks for an in-person class or a meeting. Click a person to see their details and send a message, drag the desks, and add notes.'
-          : 'View the classes and meetings you are in, and see a few details about the people in the room.'}
-      </p>
+    <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="en-gb">
+      <div className={styles.titleRow}>
+        <Typography variant="h1" className={`${common.pageTitle} ${styles.titleInRow}`}>Classrooms</Typography>
+        {intro === 'gone' && (
+          <Tooltip title={introCopy} arrow placement="bottom-start" slotProps={{ tooltip: { sx: { maxWidth: 280 } } }}>
+            <IconButton size="small" aria-label="About classrooms" className={styles.titleInfo}><InfoOutlinedIcon fontSize="small" /></IconButton>
+          </Tooltip>
+        )}
+      </div>
+      {(intro !== 'gone' || room) && (
+      <div className={`${styles.masthead} ${intro === 'leaving' ? styles.mastheadLeaving : ''} ${intro === 'gone' ? styles.mastheadWide : ''}`}>
+        {intro !== 'gone' && (
+          <div className={styles.introWrap} ref={introRef}>
+            <p className={styles.intro}>{introCopy}</p>
+          </div>
+        )}
+        {room && (
+          <section className={styles.details} aria-labelledby="room-details-title">
+            <div className={styles.detailsHead}>
+              <Typography id="room-details-title" component="h2" variant="h3" className={styles.detailsTitle}>{room.name}</Typography>
+              {room.canEdit && <IconButton size="small" aria-label="Edit" onClick={() => beginEdit(room)}><EditIcon /></IconButton>}
+            </div>
+            <dl className={`${styles.facts} ${styles.detailRow}`}>
+              <div className={styles.detailIcon}>
+                <dt>
+                  {room.kind === 'meeting' ? <GroupsIcon aria-hidden="true" /> : <SchoolIcon aria-hidden="true" />}
+                  <span className="visually-hidden">Room for</span>
+                </dt>
+                <dd>{roomFor(room)}</dd>
+              </div>
+              <div className={styles.detailIcon}>
+                <dt>
+                  <CalendarIcon aria-hidden="true" />
+                  <span className="visually-hidden">Date and time</span>
+                </dt>
+                <dd>{room.startsAt ? roomWhenLabel(room.startsAt) : 'Not set'}</dd>
+              </div>
+              <div className={styles.detailIcon}>
+                <dt>
+                  <PlaceIcon aria-hidden="true" />
+                  <span className="visually-hidden">Location</span>
+                </dt>
+                <dd>{room.location || 'Not set'}</dd>
+              </div>
+            </dl>
+          </section>
+        )}
+      </div>
+      )}
       <p className="visually-hidden" role="status">{saving ? 'Saving the layout…' : live}</p>
 
+      {error && !creating && !editingId && <Alert severity="error" className={common.gapAbove} onClose={() => setError(null)}>{error}</Alert>}
+
       {canCreate && (
-        creating ? (
-          <form className={styles.form} onSubmit={(event) => {
-            event.preventDefault();
-            void run(async () => {
-              const result = await createRoom({ name: roomName, kind, courseId: kind === 'class' ? Number(courseId) : undefined });
-              if (result.ok && result.roomId) setPendingSelect(result.roomId);
-              return result;
-            }, () => {
-              setRoomName('');
-              setCreating(false);
-            });
-          }}>
-            <Typography variant="h2">New room</Typography>
-            <TextField label="Room name" value={roomName} onChange={(event) => setRoomName(event.target.value)} slotProps={{ htmlInput: { maxLength: 80 } }} required />
-            <FormControl>
-              <FormLabel id="room-kind">Room for</FormLabel>
-              <RadioGroup aria-labelledby="room-kind" row value={kind} onChange={(event) => setKind(event.target.value === 'meeting' ? 'meeting' : 'class')}>
-                <FormControlLabel value="class" control={<Radio />} label="A class" disabled={courses.length === 0} />
-                <FormControlLabel value="meeting" control={<Radio />} label="A meeting" />
-              </RadioGroup>
-            </FormControl>
-            {kind === 'class' && (
-              <TextField select label="Class" value={courseId} onChange={(event) => setCourseId(event.target.value)} required>
-                {courses.map((course) => <MenuItem key={course.id} value={String(course.id)}>{course.name}</MenuItem>)}
-              </TextField>
-            )}
-            {courses.length === 0 && <p className={common.muted}>You can set up a meeting. A class room needs a class you teach.</p>}
-            <div className={styles.actions}>
-              <Button type="submit" variant="contained" disabled={busy || (kind === 'class' && !courseId)}>Create room</Button>
-              {shown.length > 0 && <Button type="button" variant="outlined" color="secondary" onClick={() => setCreating(false)}>Cancel</Button>}
-            </div>
-          </form>
-        ) : (
-          <div className={styles.actions}>
-            <Button type="button" variant="contained" onClick={() => setCreating(true)}>New room</Button>
+        <Drawer
+          anchor="right"
+          open={creating}
+          onClose={() => { if (!busy) setCreating(false); }}
+          slotProps={{ paper: { 'aria-labelledby': 'new-room-title', className: styles.drawerPaper } as object }}
+        >
+          <div className={styles.drawerHeader}>
+            <Typography id="new-room-title" variant="h2" className={styles.detailTitle}>New room</Typography>
+            <IconButton onClick={() => setCreating(false)} aria-label="Close" disabled={busy}><CloseIcon /></IconButton>
           </div>
-        )
+          <div className={styles.drawerBody}>
+            <form className={styles.createForm} onSubmit={(event) => {
+              event.preventDefault();
+              const when = storedWhen(roomWhen, roomWhenInvalid);
+              if (!when.ok) {
+                setError('That date or time is not valid.');
+                return;
+              }
+              void run(async () => {
+                const result = await createRoom({
+                  name: roomName,
+                  kind,
+                  courseId: kind === 'class' ? Number(courseId) : undefined,
+                  startsAt: when.value,
+                  location: roomLocation,
+                });
+                if (result.ok && result.roomId) setPendingSelect(result.roomId);
+                return result;
+              }, () => {
+                setRoomName('');
+                setRoomWhen(null);
+                setRoomWhenInvalid(false);
+                setRoomLocation('');
+                setCreating(false);
+              });
+            }}>
+              {error && <Alert severity="error" role="alert" onClose={() => setError(null)}>{error}</Alert>}
+              <TextField label="Room name" value={roomName} onChange={(event) => setRoomName(event.target.value)} slotProps={{ htmlInput: { maxLength: 80 } }} required />
+              <FormControl>
+                <FormLabel id="room-kind">Room for</FormLabel>
+                <RadioGroup aria-labelledby="room-kind" value={kind} onChange={(event) => setKind(event.target.value === 'meeting' ? 'meeting' : 'class')}>
+                  <FormControlLabel value="class" control={<Radio />} label="A class" disabled={courses.length === 0} />
+                  <FormControlLabel value="meeting" control={<Radio />} label="A meeting" />
+                </RadioGroup>
+              </FormControl>
+              {kind === 'class' && (
+                <TextField select label="Class" value={courseId} onChange={(event) => setCourseId(event.target.value)} required>
+                  {courses.map((course) => <MenuItem key={course.id} value={String(course.id)}>{course.name}</MenuItem>)}
+                </TextField>
+              )}
+              {courses.length === 0 && <p className={common.muted}>You can set up a meeting. A classroom needs a class you teach.</p>}
+              <WhenField value={roomWhen} onChange={setRoomWhen} onInvalid={setRoomWhenInvalid} />
+              <TextField label="Location" value={roomLocation} onChange={(event) => setRoomLocation(event.target.value)} slotProps={{ htmlInput: { maxLength: LOCATION_MAX } }} />
+              <div className={styles.actions}>
+                <Button type="submit" variant="contained" disabled={busy || (kind === 'class' && !courseId)}>Create room</Button>
+                <Button type="button" variant="outlined" color="secondary" disabled={busy} onClick={() => setCreating(false)}>Cancel</Button>
+              </div>
+            </form>
+          </div>
+        </Drawer>
       )}
 
-      {error && <Alert severity="error" className={common.gapAbove} onClose={() => setError(null)}>{error}</Alert>}
-
-      {shown.length === 0 ? (
+      {shown.length === 0 && !canCreate ? (
         <Alert severity="info" className={common.gapAbove}>
-          {canCreate
-            ? 'Create a room, then drag the desks into place.'
-            : 'No class rooms yet. When a teacher arranges a room for one of your classes, or adds you to a meeting, it will show up here.'}
+          No classrooms yet. When a teacher arranges a room for one of your classes, or adds you to a meeting, it will show up here.
         </Alert>
       ) : (
-        <div className={styles.columns}>
-          <div>
+        <div className={`${styles.columns} ${sidebarOpen ? '' : styles.columnsFolded}`}>
+          <div className={styles.sidebarColumn}>
             <Paper className={styles.sidebar}>
-              <Box className={styles.block} sx={{ p: 2 }}>
-                <Typography component="h2" variant="overline" className={styles.sideTitle}>Rooms</Typography>
-                <ul className={styles.roomList}>
-                  {shown.map((item) => (
-                    <li key={item.id}>
-                      <button type="button" className={styles.roomButton} aria-current={item.id === room?.id ? 'true' : undefined} onClick={() => setSelectedId(item.id)}>
-                        <span className={styles.roomName}>{item.name}</span>
-                        <span className={styles.roomMeta}>{roomKind(item)}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </Box>
+              <div className={styles.sidebarBar}>
+                <Typography component="h2" variant="overline" className={styles.sideTitle} aria-hidden={sidebarOpen ? undefined : true}>Rooms</Typography>
+                <IconButton
+                  size="small"
+                  aria-expanded={sidebarOpen}
+                  aria-controls="room-sidebar"
+                  aria-label={sidebarOpen ? 'Hide the room list' : 'Show the room list'}
+                  onClick={() => setSidebarOpen((open) => !open)}
+                >
+                  {sidebarOpen ? <ChevronLeftIcon /> : <ChevronRightIcon />}
+                </IconButton>
+              </div>
+              <div className={`${styles.sidebarReveal} ${sidebarOpen ? '' : styles.sidebarRevealClosed}`}>
+                <div className={styles.sidebarRevealInner} inert={sidebarOpen ? undefined : true}>
+                  <div className={styles.sidebarBody}>
+                    {shown.length > 0 && <ul id="room-sidebar" className={styles.roomList}>
+                      {shown.map((item) => (
+                        <li key={item.id}>
+                          <button type="button" className={styles.roomButton} aria-current={item.id === room?.id ? 'true' : undefined} onClick={() => setSelectedId(item.id)}>
+                            <span className={styles.roomName}>{item.name}</span>
+                            {item.startsAt && <span className={styles.roomMeta}>{roomWhenLabel(item.startsAt)}</span>}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>}
+                    {canCreate && (
+                      <Button type="button" size="small" variant="contained" onClick={() => { setSelectedPersonId(null); setError(null); setEditingId(null); setCreating(true); }}>Create new room</Button>
+                    )}
+                  </div>
+                </div>
+              </div>
             </Paper>
             {room?.canEdit && (
+            <div className={`${styles.sidebarReveal} ${sidebarOpen ? '' : styles.sidebarRevealClosed}`}>
+              <div className={styles.sidebarRevealInner} inert={sidebarOpen ? undefined : true}>
             <Paper className={styles.sidebar}>
               <Box sx={{ p: 2, mt: 2 }}>
               {room.kind === 'meeting' ? (
@@ -487,9 +681,6 @@ export function RoomLayoutScreen({ canCreate, courses, candidates, rooms }: Room
               ) : <Alert severity="info">You can seat/unseat the students in this room.</Alert>}
               </Box>
             </Paper>
-            )}
-
-            {room?.canEdit && (
             <Paper className={styles.sidebar}>
               <Box sx={{ p: 2, mt: 2 }}>
                   <Typography component="h2" variant="overline">Not seated</Typography>
@@ -518,18 +709,15 @@ export function RoomLayoutScreen({ canCreate, courses, candidates, rooms }: Room
                   )}
               </Box>
             </Paper>
+              </div>
+            </div>
             )}
           </div>
 
-          {room && (
+          {shown.length === 0 ? (
+            <Alert severity="info">Create a room, then drag the desks into place.</Alert>
+          ) : room && (
             <div className={styles.workspace}>
-              {!room.canEdit && <p className={`${styles.viewOnly} ${common.muted}`}>View only. A teacher arranges the desks and notes.</p>}
-              {room.canEdit && (
-                <p id="desk-help" className={`${styles.hint} ${common.muted}`}>
-                  Drag a desk to move it, or select it and use the arrow keys. Drag a name from Not seated onto the floor to give them a desk.
-                  The front of the room is along the bottom, the way you see the class. A desk on your left is on their right.
-                </p>
-              )}
               {saving && <p className={`${styles.hint} ${common.muted}`} aria-hidden="true">Saving the layout…</p>}
               <div className={styles.canvasScroll}>
                 <div className={styles.room}>
@@ -541,7 +729,6 @@ export function RoomLayoutScreen({ canCreate, courses, candidates, rooms }: Room
                           type="button"
                           aria-pressed={selected?.personId === seat.personId}
                           aria-haspopup="dialog"
-                          aria-describedby={room.canEdit ? 'desk-help' : undefined}
                           aria-keyshortcuts={room.canEdit ? 'ArrowUp ArrowDown ArrowLeft ArrowRight' : undefined}
                           onClick={() => ignoreDragClick(() => openPerson(room.id, seat.personId))}
                           onKeyDown={(event) => {
@@ -570,32 +757,67 @@ export function RoomLayoutScreen({ canCreate, courses, candidates, rooms }: Room
                   {room.canEdit && <p className={styles.front}>Front of the room</p>}
                 </div>
               </div>
-
-              {room.canEdit && (
-                <div className={styles.actions}>
-                  {confirmRoom === room.id ? (
-                    <>
-                      <Button type="button" variant="contained" color="error" disabled={busy} onClick={() => {
-                        const id = room.id;
-                        void run(() => deleteRoom(id), () => {
-                          setHiddenIds((prev) => [...prev, id]);
-                          clearLayout(id);
-                          setConfirmRoom(null);
-                          setSelectedId(null);
-                        });
-                      }}>
-                        Delete {room.name}
-                      </Button>
-                      <Button type="button" variant="outlined" color="secondary" onClick={() => setConfirmRoom(null)}>Keep it</Button>
-                    </>
-                  ) : (
-                    <Button type="button" variant="outlined" color="secondary" onClick={() => setConfirmRoom(room.id)}>Delete room</Button>
-                  )}
-                </div>
-              )}
             </div>
           )}
         </div>
+      )}
+      {room?.canEdit && (
+        <Drawer
+          anchor="right"
+          open={editingId === room.id}
+          onClose={() => { if (!busy) { setEditingId(null); setError(null); setConfirmRoom(null); } }}
+          slotProps={{ paper: { 'aria-labelledby': 'edit-room-title', className: styles.drawerPaper } as object }}
+        >
+          <div className={styles.drawerHeader}>
+            <Typography id="edit-room-title" variant="h2" className={styles.detailTitle}>
+              Edit {room.kind === 'meeting' ? 'meeting' : 'classroom'}
+            </Typography>
+            <IconButton onClick={() => { setEditingId(null); setError(null); setConfirmRoom(null); }} aria-label="Close" disabled={busy}><CloseIcon /></IconButton>
+          </div>
+          <div className={styles.drawerBody}>
+            <form className={styles.createForm} onSubmit={(event) => {
+              event.preventDefault();
+              const when = storedWhen(editWhen, editWhenInvalid);
+              if (!when.ok) {
+                setError('That date or time is not valid.');
+                return;
+              }
+              const id = room.id;
+              void run(() => saveRoomDetails(id, { name: editName, startsAt: when.value, location: editLocation }), () => setEditingId(null));
+            }}>
+              <p className={styles.detailMeta}>{roomFor(room)}</p>
+              {error && <Alert severity="error" role="alert" onClose={() => setError(null)}>{error}</Alert>}
+              <TextField label="Room name" value={editName} onChange={(event) => setEditName(event.target.value)} slotProps={{ htmlInput: { maxLength: 80 } }} required />
+              <WhenField value={editWhen} onChange={setEditWhen} onInvalid={setEditWhenInvalid} />
+              <TextField label="Location" value={editLocation} onChange={(event) => setEditLocation(event.target.value)} slotProps={{ htmlInput: { maxLength: LOCATION_MAX } }} />
+              <div className={styles.actions}>
+                <Button type="submit" variant="contained" disabled={busy}>Save</Button>
+                <Button type="button" variant="outlined" color="secondary" disabled={busy} onClick={() => { setEditingId(null); setError(null); setConfirmRoom(null); }}>Cancel</Button>
+              </div>
+            </form>
+            <div className={styles.deleteRoom}>
+              {confirmRoom === room.id ? (
+                <>
+                  <Button type="button" variant="contained" color="error" disabled={busy} onClick={() => {
+                    const id = room.id;
+                    void run(() => deleteRoom(id), () => {
+                      setHiddenIds((prev) => [...prev, id]);
+                      clearLayout(id);
+                      setConfirmRoom(null);
+                      setEditingId(null);
+                      setSelectedId(null);
+                    });
+                  }}>
+                    Delete {room.name}
+                  </Button>
+                  <Button type="button" variant="outlined" color="secondary" disabled={busy} onClick={() => setConfirmRoom(null)}>Keep it</Button>
+                </>
+              ) : (
+                <Button type="button" variant="outlined" color="error" disabled={busy} onClick={() => setConfirmRoom(room.id)}>Delete room</Button>
+              )}
+            </div>
+          </div>
+        </Drawer>
       )}
       {room && (
         <Drawer
@@ -782,6 +1004,6 @@ export function RoomLayoutScreen({ canCreate, courses, candidates, rooms }: Room
         )}
       </Dialog>
       {ghost && <div className={styles.ghost} style={{ left: ghost.x, top: ghost.y }} aria-hidden="true">{ghost.name}</div>}
-    </>
+    </LocalizationProvider>
   );
 }

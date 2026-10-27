@@ -6,7 +6,10 @@ import {
   classesForPerson,
   cleanLabel,
   cleanGuestEmail,
+  cleanLocation,
   cleanNote,
+  cleanOptionalStartsAt,
+  cleanWhen,
   desksForPeople,
   draggedSpot,
   freePosition,
@@ -157,6 +160,19 @@ describe('names and notes', () => {
     expect(cleanGuestEmail('not an email')).toEqual({ ok: false, reason: 'bad' });
     expect(cleanGuestEmail(`${'a'.repeat(250)}@b.co`)).toEqual({ ok: false, reason: 'long' });
   });
+
+  it('keeps a date with a time, and a location', () => {
+    expect(cleanWhen('', '')).toEqual({ ok: true, value: '' });
+    expect(cleanWhen('2026-11-05', '')).toEqual({ ok: false, reason: 'incomplete' });
+    expect(cleanWhen('2026-11-05', '18:30')).toEqual({ ok: true, value: '2026-11-05T18:30' });
+    expect(cleanWhen('2026-02-31', '09:00')).toEqual({ ok: false, reason: 'bad' });
+    expect(cleanOptionalStartsAt('')).toEqual({ ok: true, value: '' });
+    expect(cleanOptionalStartsAt('2026-11-05T18:30')).toEqual({ ok: true, value: '2026-11-05T18:30' });
+    expect(cleanOptionalStartsAt('2026-11-05')).toEqual({ ok: false });
+    expect(cleanLocation('  Room  4  ')).toEqual({ ok: true, value: 'Room 4' });
+    expect(cleanLocation('   ')).toEqual({ ok: true, value: '' });
+    expect(cleanLocation('x'.repeat(81)).ok).toBe(false);
+  });
 });
 
 describe('what a person sees', () => {
@@ -209,7 +225,7 @@ describe('person details', () => {
     people: [{ id: 'user:4', name: 'Alan Turing', userId: 4 }],
   });
 
-  it('lists only class rooms the viewer can open', () => {
+  it('lists only classrooms the viewer can open', () => {
     const rooms = [thursday, lesson, hidden, meeting];
     expect(classesForPerson(rooms, alan, student).map((item) => item.name)).toEqual(['Thursday lab', 'Tuesday']);
     expect(sharedClassCourses(rooms, alan, student)).toEqual([8]);

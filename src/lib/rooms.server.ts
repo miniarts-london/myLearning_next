@@ -13,6 +13,7 @@ import { readLegacyRooms } from './rooms.legacy';
 import {
   GUEST_EMAIL_MAX,
   GUEST_NAME_MAX,
+  LOCATION_MAX,
   NOTE_MAX,
   ROOM_NAME_MAX,
   ROOM_PEOPLE_MAX,
@@ -22,8 +23,9 @@ import {
   classesForPerson,
   cleanGuestEmail,
   cleanLabel,
+  cleanLocation,
   cleanNote,
-  cleanStartsAt,
+  cleanOptionalStartsAt,
   desksForPeople,
   freePosition,
   mergeCourses,
@@ -122,7 +124,8 @@ function isRoom(value: unknown): value is RoomRecord {
     && Array.isArray(room.people) && room.people.every(isPerson)
     && Array.isArray(room.notes) && room.notes.every(isNote)
     && typeof room.updatedAt === 'string'
-    && (room.startsAt === undefined || typeof room.startsAt === 'string');
+    && (room.startsAt === undefined || typeof room.startsAt === 'string')
+    && (room.location === undefined || typeof room.location === 'string');
 }
 
 async function readRooms(): Promise<RoomRecord[]> {
@@ -292,7 +295,7 @@ function denied(result: { access: RoomAccess; room: RoomRecord; people: RoomPers
   return 'ok' in result;
 }
 
-export async function createRoomRecord(session: SessionPayload, input: { name: string; kind: string; courseId?: number; startsAt?: string }): Promise<RoomResult> {
+export async function createRoomRecord(session: SessionPayload, input: { name: string; kind: string; courseId?: number; startsAt?: string; location?: string }): Promise<RoomResult> {
   const { access } = await loadAccess(session);
   if (!access.isAdmin && access.staffCourseIds.length === 0) {
     return { ok: false, message: 'Only teachers can arrange a room.' };
@@ -307,7 +310,6 @@ export async function createRoomRecord(session: SessionPayload, input: { name: s
 
   let people: RoomPerson[] = [];
   let courseId: number | null = null;
-  let startsAt: string | undefined;
   if (input.kind === 'class') {
     if (!access.staffCourseIds.includes(Number(input.courseId))) {
       return { ok: false, message: 'Choose a class you teach.' };
@@ -317,11 +319,11 @@ export async function createRoomRecord(session: SessionPayload, input: { name: s
     if (!listed) return { ok: false, message: "That class list couldn't be loaded." };
     if (listed.length > ROOM_PEOPLE_MAX) return { ok: false, message: `A room can hold ${ROOM_PEOPLE_MAX} people. This class has more.` };
     people = listed;
-  } else if (input.startsAt) {
-    const when = cleanStartsAt(input.startsAt);
-    if (!when.ok) return { ok: false, message: 'Add a date and time.' };
-    startsAt = when.value;
   }
+  const when = cleanOptionalStartsAt(input.startsAt ?? '');
+  if (!when.ok) return { ok: false, message: 'That date or time is not valid.' };
+  const place = cleanLocation(input.location ?? '');
+  if (!place.ok) return { ok: false, message: `Use a shorter location (${LOCATION_MAX} characters or fewer).` };
 
   const room: RoomRecord = {
     id: crypto.randomUUID(),
@@ -333,10 +335,44 @@ export async function createRoomRecord(session: SessionPayload, input: { name: s
     desks: desksForPeople(people),
     notes: [],
     updatedAt: new Date().toISOString(),
-    ...(startsAt ? { startsAt } : {}),
+    ...(when.value ? { startsAt: when.value } : {}),
+    ...(place.value ? { location: place.value } : {}),
   };
   const saved = await updateRooms(async (rooms) => ({ rooms: [...rooms, room] }));
   return saved.ok ? { ok: true, roomId: room.id } : saved;
+}
+
+export async function updateRoomDetailsRecord(session: SessionPayload, roomId: string, input: { name: string; startsAt?: string; location?: string }): Promise<RoomResult> {
+  const found = await editableRoom(session, roomId);
+  if (denied(found)) return found;
+  const name = cleanLabel(input.name, ROOM_NAME_MAX);
+  if (!name.ok) {
+    return { ok: false, message: name.reason === 'empty' ? 'Give the room a name.' : `Use a shorter name (${ROOM_NAME_MAX} characters or fewer).` };
+  }
+  const when = cleanOptionalStartsAt(input.startsAt ?? '');
+  if (!when.ok) return { ok: false, message: 'That date or time is not valid.' };
+  const place = cleanLocation(input.location ?? '');
+  if (!place.ok) return { ok: false, message: `Use a shorter location (${LOCATION_MAX} characters or fewer).` };
+
+  return updateRooms(async (rooms) => {
+    const room = rooms.find((item) => item.id === roomId);
+    if (!room || !canEditRoom(room, found.access)) return { rooms, error: "You can't change this room." };
+    const people = room.kind === 'class' ? found.people : room.people;
+    const pruned = pruneRoom(room.desks, room.notes, people);
+    const updated: RoomRecord = {
+      ...room,
+      name: name.value,
+      people,
+      desks: pruned.desks,
+      notes: pruned.notes,
+      updatedAt: new Date().toISOString(),
+    };
+    if (when.value) updated.startsAt = when.value;
+    else delete updated.startsAt;
+    if (place.value) updated.location = place.value;
+    else delete updated.location;
+    return { rooms: replaceRoom(rooms, updated) };
+  });
 }
 
 export async function saveRoomDesks(session: SessionPayload, roomId: string, desks: unknown): Promise<RoomResult> {
@@ -494,7 +530,7 @@ function missingPerson(found: FoundPerson | { ok: false; message: string }): fou
 }
 
 // Loaded when the drawer opens, so a student's page never includes someone else's email.
-// Staff see email and status. Courses come from Moodle, plus any class room both people can see.
+// Staff see email and status. Courses come from Moodle, plus any classroom both people can see.
 export async function loadPersonDetails(session: SessionPayload, roomId: string, personId: string): Promise<PersonLookup> {
   const found = await viewablePerson(session, roomId, personId);
   if (missingPerson(found)) return found;
