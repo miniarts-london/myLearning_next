@@ -61,12 +61,6 @@ type Drag =
 const NO_SEATS: SeatView[] = [];
 const NO_UNSEATED: UnseatedView[] = [];
 
-function roomKind(item: RoomView): string {
-  const kind = item.kind === 'meeting' ? 'Meeting' : (item.courseName ? `Class · ${item.courseName}` : 'Class');
-  const when = item.startsAt ? roomWhenLabel(item.startsAt) : '';
-  return [kind, when, item.location ?? ''].filter(Boolean).join(' · ');
-}
-
 function roomFor(item: RoomView): string {
   if (item.kind === 'meeting') return 'A meeting';
   return item.courseName ? `Class · ${item.courseName}` : 'A class';
@@ -880,12 +874,14 @@ export function RoomLayoutScreen({ canCreate, courses, candidates, rooms, viewer
                 <IconButton onClick={() => setSelectedPersonId(null)} aria-label="Close details"><CloseIcon /></IconButton>
               </div>
               <div className={styles.drawerBody}>
-                <p className={styles.detailMeta}>
-                  {roomKind(room)}
-                  {room.presenter?.personId === selected.personId ? ' · Presenter' : ''}
-                  {inRoom && !seated ? ' · Not seated yet' : ''}
-                  {selected.isYou ? ' · This is you' : ''}
-                </p>
+                {(room.presenter?.personId === selected.personId || (inRoom && !seated)) && (
+                  <p className={styles.detailMeta}>
+                    {[
+                      room.presenter?.personId === selected.personId ? 'Presenter' : '',
+                      inRoom && !seated ? 'Not seated yet' : '',
+                    ].filter(Boolean).join(' · ')}
+                  </p>
+                )}
                 {detailsLoading && <p className={common.muted} role="status">Loading details…</p>}
                 {detailsError && <Alert severity="error" role="alert">{detailsError}</Alert>}
                 {shownDetails && (
