@@ -44,6 +44,9 @@ async function readSqlite(file: string): Promise<RoomRecord[]> {
         updatedAt: String(r.updated_at),
         ...(roomCols.has('starts_at') && typeof r.starts_at === 'string' && r.starts_at ? { startsAt: r.starts_at } : {}),
         ...(roomCols.has('location') && typeof r.location === 'string' && r.location.trim() ? { location: r.location } : {}),
+        ...(roomCols.has('presenter_user_id') && roomCols.has('presenter_name') && r.presenter_user_id !== null && r.presenter_user_id !== undefined && typeof r.presenter_name === 'string' && r.presenter_name.trim()
+          ? { presenter: { userId: Number(r.presenter_user_id), name: r.presenter_name.trim() } }
+          : {}),
         people: of(people, id).map((p) => ({
           id: String(p.id),
           name: String(p.name),

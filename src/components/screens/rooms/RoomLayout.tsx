@@ -21,6 +21,7 @@ import RadioGroup from '@mui/material/RadioGroup';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import CalendarIcon from '@mui/icons-material/CalendarTodayOutlined';
+import PresenterIcon from '@mui/icons-material/CoPresentOutlined';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import EditIcon from '@mui/icons-material/EditOutlined';
@@ -33,7 +34,7 @@ import ChatIcon from '@mui/icons-material/ChatBubbleOutlineOutlined';
 import SendIcon from '@mui/icons-material/Send';
 import { addPerson, createRoom, deleteRoom, messagePerson, personDetails, removePerson, saveDesks, saveGuestEmail, saveNote, saveRoomDetails } from '@/actions/rooms';
 import { MESSAGE_MAX } from '@/lib/messages';
-import { NOTE_MAX, GUEST_EMAIL_MAX, LOCATION_MAX, draggedSpot, freePosition, planPoint, roomWhenLabel, spotFromPointer, type PersonDetails, type RoomPageData, type RoomResult, type RoomView, type SeatView, type UnseatedView } from '@/lib/rooms';
+import { NOTE_MAX, GUEST_EMAIL_MAX, LOCATION_MAX, draggedSpot, freePosition, planPoint, roomWhenLabel, spotFromPointer, userIdFromPersonId, type PersonDetails, type RoomPageData, type RoomResult, type RoomView, type SeatView, type UnseatedView } from '@/lib/rooms';
 import common from '@/css/common.module.css';
 import styles from '@/css/RoomLayout.module.css';
 import { Alert, Box, Paper } from '@mui/material';
@@ -69,6 +70,21 @@ function roomKind(item: RoomView): string {
 function roomFor(item: RoomView): string {
   if (item.kind === 'meeting') return 'A meeting';
   return item.courseName ? `Class · ${item.courseName}` : 'A class';
+}
+
+function presenterChoices(item: RoomView, viewer: { userId: number; name: string }): { userId: number; name: string }[] {
+  const choices = [{ userId: viewer.userId, name: `${viewer.name} (you)` }];
+  const seen = new Set([viewer.userId]);
+  for (const person of [...item.seats, ...item.unseated]) {
+    const userId = userIdFromPersonId(person.personId);
+    if (userId === null || seen.has(userId)) continue;
+    seen.add(userId);
+    choices.push({ userId, name: person.name });
+  }
+  if (item.presenter && !seen.has(item.presenter.userId)) {
+    choices.push({ userId: item.presenter.userId, name: item.presenter.name });
+  }
+  return choices;
 }
 
 function storedWhen(value: Dayjs | null, invalid: boolean): { ok: true; value: string } | { ok: false } {
@@ -122,11 +138,11 @@ function emailLine(email: string): ReactNode {
 
 // A floor plan for an in-person class or a meeting. Teachers drag desks and write notes.
 // Students get the same page with those controls left out; the server checks the role again on save.
-export function RoomLayoutScreen({ canCreate, courses, candidates, rooms }: RoomPageData) {
+export function RoomLayoutScreen({ canCreate, courses, candidates, rooms, viewer, initialRoomId = null }: RoomPageData & { initialRoomId?: string | null }) {
   const router = useRouter();
   const [hiddenIds, setHiddenIds] = useState<string[]>([]);
   const shown = rooms.filter((item) => !hiddenIds.includes(item.id));
-  const [selectedId, setSelectedId] = useState<string | null>(shown[0]?.id ?? null);
+  const [selectedId, setSelectedId] = useState<string | null>(rooms.some((item) => item.id === initialRoomId) ? initialRoomId : (shown[0]?.id ?? null));
   const [pendingSelect, setPendingSelect] = useState<string | null>(null);
   if (pendingSelect && shown.some((item) => item.id === pendingSelect) && selectedId !== pendingSelect) {
     setSelectedId(pendingSelect);
@@ -153,10 +169,14 @@ export function RoomLayoutScreen({ canCreate, courses, candidates, rooms }: Room
   const [detailsError, setDetailsError] = useState<string | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const detailTicket = useRef(0);
+  const presenterSpot = room?.presenter && selectedPersonId === room.presenter.personId
+    ? { personId: room.presenter.personId, name: room.presenter.name, isYou: room.presenter.userId === viewer.userId, note: null as string | null }
+    : null;
   const selected = seats.find((seat) => seat.personId === selectedPersonId)
     ?? unseated.find((person) => person.personId === selectedPersonId)
-    ?? null;
+    ?? presenterSpot;
   const seated = selected ? seats.some((seat) => seat.personId === selected.personId) : false;
+  const inRoom = selected ? seated || unseated.some((person) => person.personId === selected.personId) : false;
   const [draftKey, setDraftKey] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   if ((selected?.personId ?? null) !== draftKey) {
@@ -193,6 +213,7 @@ export function RoomLayoutScreen({ canCreate, courses, candidates, rooms }: Room
   const [editWhen, setEditWhen] = useState<Dayjs | null>(null);
   const [editWhenInvalid, setEditWhenInvalid] = useState(false);
   const [editLocation, setEditLocation] = useState('');
+  const [editPresenter, setEditPresenter] = useState('');
   const [courseId, setCourseId] = useState(courses[0] ? String(courses[0].id) : '');
   const [guestName, setGuestName] = useState('');
   const [candidateId, setCandidateId] = useState('');
@@ -473,6 +494,7 @@ export function RoomLayoutScreen({ canCreate, courses, candidates, rooms }: Room
     setEditWhen(item.startsAt ? dayjs(item.startsAt) : null);
     setEditWhenInvalid(false);
     setEditLocation(item.location ?? '');
+    setEditPresenter(item.presenter ? String(item.presenter.userId) : '');
   }
 
   const introCopy = canCreate
@@ -523,6 +545,19 @@ export function RoomLayoutScreen({ canCreate, courses, candidates, rooms }: Room
                   <span className="visually-hidden">Location</span>
                 </dt>
                 <dd>{room.location || 'Not set'}</dd>
+              </div>
+              <div className={styles.detailIcon}>
+                <dt>
+                  <PresenterIcon aria-hidden="true" />
+                  <span className="visually-hidden">Presenter</span>
+                </dt>
+                <dd>
+                  {room.presenter ? (
+                    <button type="button" className={styles.presenterButton} onClick={() => openPerson(room.id, room.presenter!.personId)}>
+                      {room.presenter.name}
+                    </button>
+                  ) : 'Not set'}
+                </dd>
               </div>
             </dl>
           </section>
@@ -783,13 +818,18 @@ export function RoomLayoutScreen({ canCreate, courses, candidates, rooms }: Room
                 return;
               }
               const id = room.id;
-              void run(() => saveRoomDetails(id, { name: editName, startsAt: when.value, location: editLocation }), () => setEditingId(null));
+              const presenterUserId = editPresenter ? Number(editPresenter) : null;
+              void run(() => saveRoomDetails(id, { name: editName, startsAt: when.value, location: editLocation, presenterUserId }), () => setEditingId(null));
             }}>
               <p className={styles.detailMeta}>{roomFor(room)}</p>
               {error && <Alert severity="error" role="alert" onClose={() => setError(null)}>{error}</Alert>}
               <TextField label="Room name" value={editName} onChange={(event) => setEditName(event.target.value)} slotProps={{ htmlInput: { maxLength: 80 } }} required />
               <WhenField value={editWhen} onChange={setEditWhen} onInvalid={setEditWhenInvalid} />
               <TextField label="Location" value={editLocation} onChange={(event) => setEditLocation(event.target.value)} slotProps={{ htmlInput: { maxLength: LOCATION_MAX } }} />
+              <TextField select label="Presenter" value={editPresenter} onChange={(event) => setEditPresenter(event.target.value)}>
+                <MenuItem value="">Not set</MenuItem>
+                {presenterChoices(room, viewer).map((choice) => <MenuItem key={choice.userId} value={String(choice.userId)}>{choice.name}</MenuItem>)}
+              </TextField>
               <div className={styles.actions}>
                 <Button type="submit" variant="contained" disabled={busy}>Save</Button>
                 <Button type="button" variant="outlined" color="secondary" disabled={busy} onClick={() => { setEditingId(null); setError(null); setConfirmRoom(null); }}>Cancel</Button>
@@ -842,7 +882,8 @@ export function RoomLayoutScreen({ canCreate, courses, candidates, rooms }: Room
               <div className={styles.drawerBody}>
                 <p className={styles.detailMeta}>
                   {roomKind(room)}
-                  {seated ? '' : ' · Not seated yet'}
+                  {room.presenter?.personId === selected.personId ? ' · Presenter' : ''}
+                  {inRoom && !seated ? ' · Not seated yet' : ''}
                   {selected.isYou ? ' · This is you' : ''}
                 </p>
                 {detailsLoading && <p className={common.muted} role="status">Loading details…</p>}
@@ -906,7 +947,7 @@ export function RoomLayoutScreen({ canCreate, courses, candidates, rooms }: Room
                     This person has no account, so you cannot use the in-app message.
                   </Alert>
                 )}
-                {room.canEdit && (
+                {room.canEdit && inRoom && (
                   <form onSubmit={(event) => {
                     event.preventDefault();
                     const id = room.id;

@@ -19,6 +19,7 @@ import {
   ROOM_PEOPLE_MAX,
   canEditRoom,
   canViewRoom,
+  choosePresenter,
   classPeople,
   classesForPerson,
   cleanGuestEmail,
@@ -28,15 +29,19 @@ import {
   cleanOptionalStartsAt,
   desksForPeople,
   freePosition,
+  keptPresenter,
   mergeCourses,
   peopleChanged,
   personDetailsFor,
   pruneRoom,
+  roomsForDashboard,
+  roomsOnLayout,
   sanitiseDesks,
   sharedClassCourses,
   toRoomView,
   userPersonId,
   isRecordId,
+  type DashboardClassroomCard,
   type PersonLookup,
   type RoomAccess,
   type RoomCandidate,
@@ -125,7 +130,12 @@ function isRoom(value: unknown): value is RoomRecord {
     && Array.isArray(room.notes) && room.notes.every(isNote)
     && typeof room.updatedAt === 'string'
     && (room.startsAt === undefined || typeof room.startsAt === 'string')
-    && (room.location === undefined || typeof room.location === 'string');
+    && (room.location === undefined || typeof room.location === 'string')
+    && (room.presenter === undefined || (
+      typeof room.presenter === 'object' && room.presenter !== null
+      && typeof room.presenter.userId === 'number'
+      && typeof room.presenter.name === 'string'
+    ));
 }
 
 async function readRooms(): Promise<RoomRecord[]> {
@@ -253,15 +263,20 @@ export async function loadRoomPage(session: SessionPayload): Promise<RoomPageDat
       const people = live.get(room.courseId);
       if (!people) return room;
       const pruned = pruneRoom(room.desks, room.notes, people);
-      if (!peopleChanged(room.people, people) && sameDesks(room.desks, pruned.desks) && sameNotes(room.notes, pruned.notes)) return room;
+      const presenter = keptPresenter(room, people);
+      const presenterChanged = (room.presenter?.userId ?? null) !== (presenter?.userId ?? null);
+      if (!peopleChanged(room.people, people) && sameDesks(room.desks, pruned.desks) && sameNotes(room.notes, pruned.notes) && !presenterChanged) return room;
       dirty = true;
-      return { ...room, people, desks: pruned.desks, notes: pruned.notes, updatedAt: new Date().toISOString() };
+      const updated: RoomRecord = { ...room, people, desks: pruned.desks, notes: pruned.notes, updatedAt: new Date().toISOString() };
+      if (presenter) updated.presenter = presenter;
+      else delete updated.presenter;
+      return updated;
     });
     if (dirty) await writeRooms(next);
     return next;
   });
 
-  const visible = rooms.filter((room) => canViewRoom(room, access));
+  const visible = roomsOnLayout(rooms, access);
   const views = await Promise.all(visible.map(async (room) => toRoomView(
     room,
     access.userId,
@@ -273,6 +288,7 @@ export async function loadRoomPage(session: SessionPayload): Promise<RoomPageDat
   const canCreate = access.isAdmin || access.staffCourseIds.length > 0;
   return {
     canCreate,
+    viewer: { userId: session.userid, name: session.fullname },
     courses,
     candidates: canCreate ? await candidatesFor(session.token, access.userId, courses, admins) : [],
     rooms: views,
@@ -342,7 +358,7 @@ export async function createRoomRecord(session: SessionPayload, input: { name: s
   return saved.ok ? { ok: true, roomId: room.id } : saved;
 }
 
-export async function updateRoomDetailsRecord(session: SessionPayload, roomId: string, input: { name: string; startsAt?: string; location?: string }): Promise<RoomResult> {
+export async function updateRoomDetailsRecord(session: SessionPayload, roomId: string, input: { name: string; startsAt?: string; location?: string; presenterUserId?: number | null }): Promise<RoomResult> {
   const found = await editableRoom(session, roomId);
   if (denied(found)) return found;
   const name = cleanLabel(input.name, ROOM_NAME_MAX);
@@ -353,20 +369,25 @@ export async function updateRoomDetailsRecord(session: SessionPayload, roomId: s
   if (!when.ok) return { ok: false, message: 'That date or time is not valid.' };
   const place = cleanLocation(input.location ?? '');
   if (!place.ok) return { ok: false, message: `Use a shorter location (${LOCATION_MAX} characters or fewer).` };
+  const people = found.room.kind === 'class' ? found.people : found.room.people;
+  const presenter = choosePresenter(input.presenterUserId ?? null, { userId: session.userid, name: session.fullname }, people);
+  if (!presenter.ok) return { ok: false, message: 'Choose yourself or someone in the room.' };
 
   return updateRooms(async (rooms) => {
     const room = rooms.find((item) => item.id === roomId);
     if (!room || !canEditRoom(room, found.access)) return { rooms, error: "You can't change this room." };
-    const people = room.kind === 'class' ? found.people : room.people;
-    const pruned = pruneRoom(room.desks, room.notes, people);
+    const listed = room.kind === 'class' ? found.people : room.people;
+    const pruned = pruneRoom(room.desks, room.notes, listed);
     const updated: RoomRecord = {
       ...room,
       name: name.value,
-      people,
+      people: listed,
       desks: pruned.desks,
       notes: pruned.notes,
       updatedAt: new Date().toISOString(),
     };
+    if (presenter.presenter) updated.presenter = presenter.presenter;
+    else delete updated.presenter;
     if (when.value) updated.startsAt = when.value;
     else delete updated.startsAt;
     if (place.value) updated.location = place.value;
@@ -387,7 +408,10 @@ export async function saveRoomDesks(session: SessionPayload, roomId: string, des
     const nextDesks = sanitiseDesks(desks, people);
     if (!nextDesks) return { rooms, error: "That layout couldn't be saved." };
     const notes = pruneRoom(nextDesks, room.notes, people).notes;
+    const presenter = keptPresenter({ ...room, people: room.people }, people);
     const updated: RoomRecord = { ...room, people, desks: nextDesks, notes, updatedAt: new Date().toISOString() };
+    if (presenter) updated.presenter = presenter;
+    else delete updated.presenter;
     return { rooms: replaceRoom(rooms, updated) };
   });
 }
@@ -520,7 +544,11 @@ async function viewablePerson(session: SessionPayload, roomId: string, personId:
   const rooms = await readRooms();
   const room = rooms.find((item) => item.id === roomId);
   if (!room || !canViewRoom(room, access)) return { ok: false, message: "You can't open this room." };
-  const person = room.people.find((item) => item.id === personId);
+  const listed = room.people.find((item) => item.id === personId);
+  const presenting = room.presenter && personId === userPersonId(room.presenter.userId)
+    ? { id: personId, name: room.presenter.name, userId: room.presenter.userId }
+    : null;
+  const person = listed ?? presenting;
   if (!person) return { ok: false, message: "That person isn't in this room." };
   return { access, room, person, rooms, courseNames };
 }
@@ -531,6 +559,29 @@ function missingPerson(found: FoundPerson | { ok: false; message: string }): fou
 
 // Loaded when the drawer opens, so a student's page never includes someone else's email.
 // Staff see email and status. Courses come from Moodle, plus any classroom both people can see.
+function classesForPresenter(
+  rooms: RoomRecord[],
+  room: RoomRecord,
+  person: RoomPerson,
+  access: RoomAccess,
+): { id: string; name: string }[] {
+  const classes = classesForPerson(rooms, person, access);
+  if (room.kind === 'class' && room.presenter?.userId === person.userId && !classes.some((item) => item.id === room.id)) {
+    classes.push({ id: room.id, name: room.name });
+    classes.sort((a, b) => a.name.localeCompare(b.name, 'en-GB') || a.id.localeCompare(b.id));
+  }
+  return classes;
+}
+
+export async function loadDashboardClassrooms(session: SessionPayload): Promise<DashboardClassroomCard[]> {
+  const { access, courseNames } = await loadAccess(session);
+  const rows = roomsForDashboard(await readRooms(), access);
+  return Promise.all(rows.map(async (row) => ({
+    ...row,
+    courseName: row.courseId === null ? null : await courseName(session.token, row.courseId, courseNames),
+  })));
+}
+
 export async function loadPersonDetails(session: SessionPayload, roomId: string, personId: string): Promise<PersonLookup> {
   const found = await viewablePerson(session, roomId, personId);
   if (missingPerson(found)) return found;
@@ -574,7 +625,7 @@ export async function loadPersonDetails(session: SessionPayload, roomId: string,
       hasAccount,
       email,
       courses: mergeCourses(listed, shared),
-      classes: classesForPerson(found.rooms, found.person, found.access),
+      classes: classesForPresenter(found.rooms, found.room, found.person, found.access),
       lastAccess,
       suspended,
       now: Math.floor(Date.now() / 1000),

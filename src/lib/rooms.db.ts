@@ -25,6 +25,8 @@ const SCHEMA = [
     updated_at TEXT NOT NULL,
     starts_at TEXT,
     location TEXT,
+    presenter_user_id INTEGER,
+    presenter_name TEXT,
     sort INTEGER NOT NULL
   )`,
   `CREATE TABLE IF NOT EXISTS room_people (
@@ -76,11 +78,13 @@ export async function openRoomStore(db: Db): Promise<RoomStore> {
   for (const statement of SCHEMA) await db.query(statement);
   await db.query('ALTER TABLE rooms ADD COLUMN IF NOT EXISTS starts_at TEXT');
   await db.query('ALTER TABLE rooms ADD COLUMN IF NOT EXISTS location TEXT');
+  await db.query('ALTER TABLE rooms ADD COLUMN IF NOT EXISTS presenter_user_id INTEGER');
+  await db.query('ALTER TABLE rooms ADD COLUMN IF NOT EXISTS presenter_name TEXT');
 
   const store: RoomStore = {
     async read(sql: Sql = db) {
       const [rooms, people, desks, notes] = await Promise.all([
-        sql.query('SELECT id, name, kind, course_id, owner_id, updated_at, starts_at, location FROM rooms ORDER BY sort'),
+        sql.query('SELECT id, name, kind, course_id, owner_id, updated_at, starts_at, location, presenter_user_id, presenter_name FROM rooms ORDER BY sort'),
         sql.query('SELECT room_id, id, name, user_id, email FROM room_people ORDER BY room_id, sort'),
         sql.query('SELECT id, room_id, person_id, x, y FROM room_desks ORDER BY room_id, sort'),
         sql.query('SELECT room_id, person_id, text, updated_at FROM room_notes ORDER BY room_id, sort'),
@@ -99,6 +103,7 @@ export async function openRoomStore(db: Db): Promise<RoomStore> {
           updatedAt: text(row.updated_at),
           ...(typeof row.starts_at === 'string' && row.starts_at ? { startsAt: row.starts_at } : {}),
           ...(typeof row.location === 'string' && row.location ? { location: row.location } : {}),
+          ...presenterFrom(row),
           people: (peopleBy.get(id) ?? []).map(personFrom),
           desks: (desksBy.get(id) ?? []).map(deskFrom),
           notes: (notesBy.get(id) ?? []).map(noteFrom),
@@ -112,8 +117,8 @@ export async function openRoomStore(db: Db): Promise<RoomStore> {
         await tx.query('DELETE FROM rooms'); // People, desks and notes go with their room (ON DELETE CASCADE).
         for (const [i, room] of rooms.entries()) {
           await tx.query(
-            'INSERT INTO rooms (id, name, kind, course_id, owner_id, updated_at, starts_at, location, sort) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
-            [room.id, room.name, room.kind, room.courseId, room.ownerId, room.updatedAt, optionalText(room.startsAt), optionalText(room.location), i],
+            'INSERT INTO rooms (id, name, kind, course_id, owner_id, updated_at, starts_at, location, presenter_user_id, presenter_name, sort) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)',
+            [room.id, room.name, room.kind, room.courseId, room.ownerId, room.updatedAt, optionalText(room.startsAt), optionalText(room.location), room.presenter?.userId ?? null, optionalText(room.presenter?.name), i],
           );
           for (const [j, person] of room.people.entries()) {
             await tx.query('INSERT INTO room_people (room_id, id, name, user_id, email, sort) VALUES ($1, $2, $3, $4, $5, $6)',
@@ -214,6 +219,12 @@ function guestEmail(person: RoomPerson): string | null {
   if (person.userId !== undefined) return null;
   const email = person.email?.trim();
   return email ? email : null;
+}
+
+function presenterFrom(row: Record<string, unknown>): { presenter?: { userId: number; name: string } } {
+  const name = typeof row.presenter_name === 'string' ? row.presenter_name.trim() : '';
+  if (row.presenter_user_id === null || row.presenter_user_id === undefined || !name) return {};
+  return { presenter: { userId: number(row.presenter_user_id), name } };
 }
 
 function optionalText(value: string | undefined): string | null {

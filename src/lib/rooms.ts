@@ -49,6 +49,8 @@ export interface RoomRecord {
   startsAt?: string;
   /** Where the room meets. Empty when none was set. */
   location?: string;
+  /** Who is presenting. A teacher can choose themselves or someone in the room. */
+  presenter?: { userId: number; name: string };
 }
 
 export interface RoomAccess {
@@ -92,6 +94,7 @@ export interface RoomView {
   updatedAt: string;
   startsAt: string | null;
   location: string | null;
+  presenter: { userId: number; name: string; personId: string } | null;
   seats: SeatView[];
   unseated: UnseatedView[];
 }
@@ -103,9 +106,24 @@ export interface RoomCourseOption {
 
 export interface RoomPageData {
   canCreate: boolean;
+  viewer: { userId: number; name: string };
   courses: RoomCourseOption[];
   candidates: RoomCandidate[];
   rooms: RoomView[];
+}
+
+export interface DashboardClassroom {
+  id: string;
+  name: string;
+  kind: RoomKind;
+  courseId: number | null;
+  startsAt: string | null;
+  location: string | null;
+  role: 'presenter' | 'member';
+}
+
+export interface DashboardClassroomCard extends DashboardClassroom {
+  courseName: string | null;
 }
 
 export type RoomResult = { ok: true; roomId?: string } | { ok: false; message: string };
@@ -135,6 +153,12 @@ const COLUMNS = 5;
 
 export function userPersonId(userId: number): string {
   return `user:${userId}`;
+}
+
+export function userIdFromPersonId(personId: string): number | null {
+  if (!personId.startsWith('user:')) return null;
+  const id = Number(personId.slice('user:'.length));
+  return Number.isInteger(id) && id > 0 ? id : null;
 }
 
 export function isRecordId(value: string): boolean {
@@ -224,8 +248,79 @@ export function canEditRoom(room: RoomRecord, access: RoomAccess): boolean {
 
 export function canViewRoom(room: RoomRecord, access: RoomAccess): boolean {
   if (canEditRoom(room, access)) return true;
+  if (room.presenter?.userId === access.userId) return true;
   if (room.kind === 'class' && room.courseId !== null && access.enrolledCourseIds.includes(room.courseId)) return true;
   return room.people.some((person) => person.userId === access.userId);
+}
+
+export function isSeated(room: RoomRecord, userId: number): boolean {
+  const ids = new Set(room.people.filter((person) => person.userId === userId).map((person) => person.id));
+  return room.desks.some((desk) => ids.has(desk.personId));
+}
+
+/** Teachers see every room they can arrange. A student sees a room only when they have a desk. */
+export function roomsOnLayout(rooms: RoomRecord[], access: RoomAccess): RoomRecord[] {
+  return rooms.filter((room) => canEditRoom(room, access) || isSeated(room, access.userId));
+}
+
+/** Empty clears the presenter. Otherwise it must be the teacher, or someone in the room with an account. */
+export function choosePresenter(
+  userId: number | null,
+  self: { userId: number; name: string },
+  people: RoomPerson[],
+): { ok: true; presenter?: { userId: number; name: string } } | { ok: false } {
+  if (userId === null) return { ok: true };
+  if (!Number.isInteger(userId) || userId <= 0) return { ok: false };
+  if (userId === self.userId) return { ok: true, presenter: { userId: self.userId, name: self.name } };
+  const person = people.find((item) => item.userId === userId);
+  if (!person) return { ok: false };
+  return { ok: true, presenter: { userId, name: person.name } };
+}
+
+/** A presenter who was in the class and has since left is cleared. A teacher who was never in the list stays. */
+export function keptPresenter(room: RoomRecord, people: RoomPerson[]): RoomRecord['presenter'] {
+  const presenter = room.presenter;
+  if (!presenter) return undefined;
+  const wasListed = room.people.some((person) => person.userId === presenter.userId);
+  if (!wasListed) return presenter;
+  return people.some((person) => person.userId === presenter.userId) ? presenter : undefined;
+}
+
+/** A stored wall-clock time is past when it is earlier than now. No time means it is not past. */
+export function classroomHasPassed(startsAt: string | null | undefined, now: Date = new Date()): boolean {
+  if (!startsAt) return false;
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(startsAt);
+  if (!match) return false;
+  const start = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]));
+  const current = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours(), now.getUTCMinutes());
+  return start < current;
+}
+
+/** Presenter rows come first. Teachers do not also get a learner row for a room they can edit. Past rooms stay off the dashboard. */
+export function roomsForDashboard(rooms: RoomRecord[], access: RoomAccess, now: Date = new Date()): DashboardClassroom[] {
+  const rows: DashboardClassroom[] = [];
+  for (const room of rooms) {
+    if (classroomHasPassed(room.startsAt, now)) continue;
+    const presenting = room.presenter?.userId === access.userId;
+    const member = !canEditRoom(room, access) && (
+      room.people.some((person) => person.userId === access.userId)
+      || (room.kind === 'class' && room.courseId !== null && access.enrolledCourseIds.includes(room.courseId))
+    );
+    if (!presenting && !member) continue;
+    rows.push({
+      id: room.id,
+      name: room.name,
+      kind: room.kind,
+      courseId: room.courseId,
+      startsAt: room.startsAt ?? null,
+      location: room.location ?? null,
+      role: presenting ? 'presenter' : 'member',
+    });
+  }
+  return rows.sort((a, b) => {
+    if (a.role !== b.role) return a.role === 'presenter' ? -1 : 1;
+    return a.name.localeCompare(b.name, 'en-GB') || a.id.localeCompare(b.id);
+  });
 }
 
 export function cleanLabel(value: string, max: number): { ok: true; value: string } | { ok: false; reason: 'empty' | 'long' } {
@@ -365,6 +460,9 @@ export function toRoomView(room: RoomRecord, viewerId: number, canEdit: boolean,
     updatedAt: room.updatedAt,
     startsAt: room.startsAt ?? null,
     location: room.location ?? null,
+    presenter: room.presenter
+      ? { userId: room.presenter.userId, name: room.presenter.name, personId: userPersonId(room.presenter.userId) }
+      : null,
     seats,
     unseated: room.people.filter((person) => !seated.has(person.id)).map(spot),
   };

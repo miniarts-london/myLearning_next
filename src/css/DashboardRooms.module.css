@@ -1,0 +1,26 @@
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: .75rem;
+}
+@media (min-width: 720px) {
+  .list { grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  height: 100%;
+  padding: 1rem 1.1rem;
+  background: #fff;
+  box-shadow: 0 0 1.25rem rgba(0, 0, 0, .06);
+  color: inherit;
+  text-decoration: none;
+}
+.card:hover { background: #faf6f8; }
+
+.name { font-weight: 600; }
+.meta { color: var(--muted); font-size: .8125rem; }

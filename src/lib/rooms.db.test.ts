@@ -86,6 +86,14 @@ describe('room database', () => {
     await second.close();
   });
 
+  it('keeps the presenter with the room', async () => {
+    const store = await openRoomStore(await pgliteDb('memory://'));
+    const led = { ...room(), presenter: { userId: 2, name: 'Tess Teacher' } };
+    await store.write([led]);
+    expect(await store.read()).toEqual([led]);
+    await store.close();
+  });
+
   it('keeps a date, time and location for a class as well as a meeting', async () => {
     const store = await openRoomStore(await pgliteDb('memory://'));
     const lesson = { ...room(), startsAt: '2026-11-05T09:00', location: 'Lab 2' };

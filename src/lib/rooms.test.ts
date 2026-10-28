@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   canEditRoom,
   canViewRoom,
+  choosePresenter,
+  classroomHasPassed,
   classPeople,
   classesForPerson,
   cleanLabel,
@@ -10,6 +12,7 @@ import {
   cleanNote,
   cleanOptionalStartsAt,
   cleanWhen,
+  keptPresenter,
   desksForPeople,
   draggedSpot,
   freePosition,
@@ -20,6 +23,8 @@ import {
   peopleChanged,
   personDetailsFor,
   pruneRoom,
+  roomsForDashboard,
+  roomsOnLayout,
   sanitiseDesks,
   sharedClassCourses,
   toRoomView,
@@ -69,9 +74,62 @@ describe('who can change a room', () => {
     expect(canViewRoom(meeting, student)).toBe(true);
   });
 
+  it('shows a student only the rooms where they have a desk', () => {
+    const seated = room({ desks: [{ id: 'd1', personId: 'user:5', x: 12, y: 16 }] });
+    const unseated = room({ id: 'other', name: 'Thursday' });
+    expect(roomsOnLayout([seated, unseated], student).map((item) => item.id)).toEqual(['room-1']);
+    expect(roomsOnLayout([seated, unseated], teacher).map((item) => item.id)).toEqual(['room-1', 'other']);
+  });
+
   it('lets a site admin arrange any room', () => {
     expect(canEditRoom(lesson, admin)).toBe(true);
     expect(canEditRoom(meeting, admin)).toBe(true);
+  });
+
+  it('lets the presenter open a room they do not otherwise belong to', () => {
+    const presented = room({ presenter: { userId: 9, name: 'Grace Hopper' } });
+    const presenter: RoomAccess = { userId: 9, isAdmin: false, staffCourseIds: [], enrolledCourseIds: [] };
+    expect(canViewRoom(presented, presenter)).toBe(true);
+    expect(canEditRoom(presented, presenter)).toBe(false);
+  });
+});
+
+describe('presenter', () => {
+  const self = { userId: 2, name: 'Tess Teacher' };
+  const people = [{ id: 'user:5', name: 'Ada Lovelace', userId: 5 }, { id: 'guest:1', name: 'Mollie' }];
+
+  it('accepts the teacher or someone in the room, and rejects anyone else', () => {
+    expect(choosePresenter(null, self, people)).toEqual({ ok: true });
+    expect(choosePresenter(2, self, people)).toEqual({ ok: true, presenter: self });
+    expect(choosePresenter(5, self, people)).toEqual({ ok: true, presenter: { userId: 5, name: 'Ada Lovelace' } });
+    expect(choosePresenter(9, self, people)).toEqual({ ok: false });
+  });
+
+  it('drops a presenter who has left the class, and keeps a teacher who was never listed', () => {
+    const lesson = room({ presenter: { userId: 5, name: 'Ada Lovelace' } });
+    expect(keptPresenter(lesson, [])).toBeUndefined();
+    const teacherLed = room({ presenter: { userId: 2, name: 'Tess Teacher' } });
+    expect(keptPresenter(teacherLed, [])).toEqual({ userId: 2, name: 'Tess Teacher' });
+  });
+
+  it('shows classroom details to the presenter, and the room to a learner who is not editing it', () => {
+    const lesson = room({ presenter: { userId: 2, name: 'Tess Teacher' }, startsAt: '2026-11-05T09:00', location: 'Lab 2' });
+    const meeting = room({ id: 'meet', kind: 'meeting', courseId: null, ownerId: 4, people: [{ id: 'user:5', name: 'Ada Lovelace', userId: 5 }] });
+    expect(roomsForDashboard([lesson, meeting], teacher)).toEqual([
+      { id: 'room-1', name: 'Tuesday', kind: 'class', courseId: 8, startsAt: '2026-11-05T09:00', location: 'Lab 2', role: 'presenter' },
+    ]);
+    expect(roomsForDashboard([lesson, meeting], student).map((item) => item.role)).toEqual(['member', 'member']);
+    expect(roomsForDashboard([lesson], { userId: 9, isAdmin: false, staffCourseIds: [], enrolledCourseIds: [] })).toEqual([]);
+  });
+
+  it('leaves a classroom off the dashboard once its time has passed', () => {
+    const now = new Date(Date.UTC(2026, 9, 28, 10, 56));
+    const past = room({ id: 'old', name: 'Monday', presenter: { userId: 2, name: 'Tess Teacher' }, startsAt: '2026-10-27T09:00' });
+    const open = room({ presenter: { userId: 2, name: 'Tess Teacher' } });
+    expect(classroomHasPassed('2026-10-27T09:00', now)).toBe(true);
+    expect(classroomHasPassed('2026-10-28T18:00', now)).toBe(false);
+    expect(classroomHasPassed(undefined, now)).toBe(false);
+    expect(roomsForDashboard([past, open], teacher, now).map((item) => item.id)).toEqual(['room-1']);
   });
 });
 

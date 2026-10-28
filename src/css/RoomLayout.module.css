@@ -208,6 +208,17 @@
   color: var(--muted);
 }
 .detailIcon svg { font-size: 1.15rem; }
+.presenterButton {
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: .15em;
+}
 
 .drawerPaper { width: min(24rem, 100vw); }
 .drawerHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; padding: 1rem 1rem 0 1.25rem; }

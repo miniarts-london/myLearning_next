@@ -6,6 +6,7 @@ import { moodle } from '@/lib/moodle';
 import { loadUpNext } from '@/lib/upNext.server';
 import { teachesCourse } from '@/lib/staff.server';
 import { loadUpcomingEvents } from '@/lib/events.server';
+import { loadDashboardClassrooms } from '@/lib/rooms.server';
 import { Loading } from '@/components/Loading';
 import { DashboardScreen } from '@/components/screens/dashboard/Dashboard';
 
@@ -39,5 +40,7 @@ async function Dashboard() {
   // No progress ring on courses this user teaches: it's their learners' progress that matters.
   const shown = courses.map((c, i) => (teaching[i] ? { ...c, progress: null } : c));
 
-  return <DashboardScreen firstname={session.firstname} courses={shown} upNext={upNext} events={events} />;
+  const classrooms = await loadDashboardClassrooms(session);
+
+  return <DashboardScreen firstname={session.firstname} courses={shown} upNext={upNext} events={events} classrooms={classrooms} />;
 }

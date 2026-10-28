@@ -6,7 +6,10 @@ import type { PersonLookup, RoomMessageResult, RoomResult } from '@/lib/rooms';
 import { addMeetingPerson, createRoomRecord, deleteRoomRecord, loadPersonDetails, messageRoomPerson, removeMeetingPerson, saveGuestEmailRecord, saveRoomDesks, saveRoomNote, updateRoomDetailsRecord } from '@/lib/rooms.server';
 
 function done(result: RoomResult): RoomResult {
-  if (result.ok) revalidatePath('/room-layout');
+  if (result.ok) {
+    revalidatePath('/room-layout');
+    revalidatePath('/dashboard');
+  }
   return result;
 }
 
@@ -15,7 +18,7 @@ export async function createRoom(input: { name: string; kind: string; courseId?:
   return done(await createRoomRecord(session, input));
 }
 
-export async function saveRoomDetails(roomId: string, input: { name: string; startsAt?: string; location?: string }): Promise<RoomResult> {
+export async function saveRoomDetails(roomId: string, input: { name: string; startsAt?: string; location?: string; presenterUserId?: number | null }): Promise<RoomResult> {
   const session = await verifySession();
   return done(await updateRoomDetailsRecord(session, roomId, input));
 }
