@@ -1,6 +1,7 @@
 import 'server-only';
 import { cache } from 'react';
 import { decodeEntities, decodeNames } from './entities';
+import { onPlatform } from './platform';
 import type {
   ActivityCompletionStatus, CalendarEvent, CourseUser, MoodleGrade, MoodleSubmission, MoodleConversation, MoodleConversationMember, MoodleMessage, MoodleUserProfile,
   AssignSubmissionStatus, CalendarActionEvent, Category, Course, CourseModuleInfo, MoodleWarning, CourseSection, EnrolledCourse, MoodleAssignment,
@@ -88,6 +89,9 @@ export async function getToken(username: string, password: string): Promise<stri
 // courses, categories, sections and activities to admins and teachers (they're allowed
 // to see them), so they're filtered out here, in one place, for everyone.
 const shown = <T extends { visible?: number }>(item: T) => item.visible !== 0;
+// Courses also have to be on this platform's list (COURSE_IDS, see ./platform), so another
+// platform's courses don't appear anywhere: dashboard, catalogue, course pages, the assistant.
+const courseShown = <T extends { id: number; visible?: number }>(course: T) => shown(course) && onPlatform(course.id);
 
 function learnerView(sections: CourseSection[]): CourseSection[] {
   return sections
@@ -101,21 +105,21 @@ export const moodle = {
   siteInfo: cache((token: string) => call<SiteInfo>(token, 'core_webservice_get_site_info')),
 
   myCourses: async (token: string, userid: number) =>
-    (await call<EnrolledCourse[]>(token, 'core_enrol_get_users_courses', { userid })).filter(shown),
+    (await call<EnrolledCourse[]>(token, 'core_enrol_get_users_courses', { userid })).filter(courseShown),
 
   allCourses: async (token: string) =>
     (await call<{ courses: Course[] }>(token, 'core_course_get_courses_by_field')).courses
-      .filter((course) => course.categoryid !== 0 && shown(course)), // Leave out the site home "course".
+      .filter((course) => course.categoryid !== 0 && courseShown(course)), // Leave out the site home "course".
 
   categories: async (token: string) =>
     (await call<Category[]>(token, 'core_course_get_categories')).filter(shown),
 
-  // undefined when the course doesn't exist or is hidden, so the page shows "not found".
+  // undefined when the course doesn't exist, is hidden or isn't on this platform, so the page shows "not found".
   // cache(): the course layout (course index) and the page both ask for this in the same
   // request; Moodle is only called once.
   course: cache(async (token: string, id: number) =>
     (await call<{ courses: Course[] }>(token, 'core_course_get_courses_by_field', { field: 'id', value: id }))
-      .courses.find(shown)),
+      .courses.find(courseShown)),
 
   courseContents: cache(async (token: string, courseid: number) =>
     learnerView(await call<CourseSection[]>(token, 'core_course_get_contents', { courseid }))),

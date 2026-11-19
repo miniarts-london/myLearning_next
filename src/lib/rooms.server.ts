@@ -6,6 +6,7 @@ import { decodeEntities } from './entities';
 import { MESSAGE_MAX } from './messages';
 import type { SessionPayload } from './session';
 import { moodle, MoodleError } from './moodle';
+import { onPlatform } from './platform';
 import { teachesCourse } from './staff.server';
 import type { CourseUser } from './types';
 import { openRoomStore, pgliteDb, postgresDb, type RoomStore, type Sql } from './rooms.db';
@@ -142,6 +143,11 @@ async function readRooms(): Promise<RoomRecord[]> {
   return (await roomsStore()).read(current.getStore());
 }
 
+// Platforms sharing one database each show only the classes for their own courses (COURSE_IDS).
+// Applied where rooms are shown or opened, never in readRooms: saving writes every room back,
+// so filtering there would delete the other platform's rooms.
+const onThisPlatform = (room: RoomRecord) => room.kind !== 'class' || room.courseId === null || onPlatform(room.courseId);
+
 async function writeRooms(rooms: RoomRecord[]): Promise<void> {
   await (await roomsStore()).write(rooms, current.getStore());
 }
@@ -247,7 +253,7 @@ export async function loadRoomPage(session: SessionPayload): Promise<RoomPageDat
   const admins = adminUserIds();
   const current = await readRooms();
   const refreshIds = [...new Set(current.flatMap((room) => (
-    room.kind === 'class' && room.courseId !== null && canEditRoom(room, access) ? [room.courseId] : []
+    room.kind === 'class' && room.courseId !== null && onThisPlatform(room) && canEditRoom(room, access) ? [room.courseId] : []
   )))];
   const live = new Map<number, RoomPerson[]>();
   await Promise.all(refreshIds.map(async (courseId) => {
@@ -276,7 +282,7 @@ export async function loadRoomPage(session: SessionPayload): Promise<RoomPageDat
     return next;
   });
 
-  const visible = roomsOnLayout(rooms, access);
+  const visible = roomsOnLayout(rooms.filter(onThisPlatform), access);
   const views = await Promise.all(visible.map(async (room) => toRoomView(
     room,
     access.userId,
@@ -299,7 +305,7 @@ async function editableRoom(session: SessionPayload, roomId: string): Promise<{ 
   if (!isRecordId(roomId)) return { ok: false, message: 'That room no longer exists.' };
   const { access } = await loadAccess(session);
   const room = (await readRooms()).find((item) => item.id === roomId);
-  if (!room || !canEditRoom(room, access)) return { ok: false, message: "You can't change this room." };
+  if (!room || !onThisPlatform(room) || !canEditRoom(room, access)) return { ok: false, message: "You can't change this room." };
   if (room.kind === 'meeting') return { access, room, people: room.people };
   if (room.courseId === null) return { ok: false, message: "You can't change this room." };
   const people = await studentsIn(session.token, room.courseId, adminUserIds());
@@ -541,7 +547,7 @@ interface FoundPerson {
 async function viewablePerson(session: SessionPayload, roomId: string, personId: string): Promise<FoundPerson | { ok: false; message: string }> {
   if (!isRecordId(roomId) || !personId) return { ok: false, message: "That person isn't in this room." };
   const { access, courseNames } = await loadAccess(session);
-  const rooms = await readRooms();
+  const rooms = (await readRooms()).filter(onThisPlatform);
   const room = rooms.find((item) => item.id === roomId);
   if (!room || !canViewRoom(room, access)) return { ok: false, message: "You can't open this room." };
   const listed = room.people.find((item) => item.id === personId);
@@ -575,7 +581,7 @@ function classesForPresenter(
 
 export async function loadDashboardClassrooms(session: SessionPayload): Promise<DashboardClassroomCard[]> {
   const { access, courseNames } = await loadAccess(session);
-  const rows = roomsForDashboard(await readRooms(), access);
+  const rows = roomsForDashboard((await readRooms()).filter(onThisPlatform), access);
   return Promise.all(rows.map(async (row) => ({
     ...row,
     courseName: row.courseId === null ? null : await courseName(session.token, row.courseId, courseNames),

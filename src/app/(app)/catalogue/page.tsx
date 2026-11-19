@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { verifySession } from '@/lib/dal';
 import { moodle } from '@/lib/moodle';
+import { parseCourseIds } from '@/lib/platform';
 import { Loading } from '@/components/Loading';
 import { CatalogueScreen } from '@/components/screens/courses/Catalogue';
 
@@ -23,10 +24,13 @@ async function Catalogue() {
     moodle.allCourses(session.token),
   ]);
 
+  const platformListed = parseCourseIds(process.env.COURSE_IDS) !== null;
   const grouped = categories
     .filter((c) => c.parent === 0)
     .sort((a, b) => a.sortorder - b.sortorder)
-    .map((category) => ({ category, courses: courses.filter((course) => course.categoryid === category.id) }));
+    .map((category) => ({ category, courses: courses.filter((course) => course.categoryid === category.id) }))
+    // With a course list (COURSE_IDS), the other categories belong to other platforms: leave out empty ones.
+    .filter((group) => !platformListed || group.courses.length > 0);
 
   return <CatalogueScreen categories={grouped} />;
 }
