@@ -26,7 +26,21 @@ export function renderInline(text: string, keyPrefix = ''): React.ReactNode[] {
   });
 }
 
-type Block = { kind: 'p'; lines: string[] } | { kind: 'ul' | 'ol'; items: string[] };
+// While an answer streams in, its end can be half of some markup ("**ov", "[Semantics quiz](/cour").
+// Rendered as-is, the raw markers would flash up and then turn into bold text or a link. Instead,
+// leave off the unfinished piece until the rest arrives. Markup never spans lines, so only the
+// last line needs checking.
+export function trimIncomplete(text: string): string {
+  const start = text.lastIndexOf('\n') + 1;
+  let line = text.slice(start);
+  const bracket = line.lastIndexOf('[');
+  if (bracket !== -1 && !/^\[[^\]\n]+\]\([^)\s]+\)/.test(line.slice(bracket))) line = line.slice(0, bracket);
+  if ((line.match(/\*\*/g) ?? []).length % 2 === 1) line = line.slice(0, line.lastIndexOf('**'));
+  if (line.endsWith('*') && !line.endsWith('**')) line = line.slice(0, -1); // Maybe the start of "**"
+  return text.slice(0, start) + line;
+}
+
+type Block ={ kind: 'p'; lines: string[] } | { kind: 'ul' | 'ol'; items: string[] };
 
 export function toBlocks(text: string): Block[] {
   const blocks: Block[] = [];
@@ -51,10 +65,11 @@ export function toBlocks(text: string): Block[] {
   return blocks.filter((b) => (b.kind === 'p' ? b.lines.length > 0 : b.items.length > 0));
 }
 
-export function AssistantText({ text }: { text: string }) {
+// `streaming`: more text is still coming, so hide unfinished markup at the end and show a caret.
+export function AssistantText({ text, streaming = false }: { text: string; streaming?: boolean }) {
   return (
-    <Box className={styles.text}>
-      {toBlocks(text).map((block, b) => block.kind === 'p' ? (
+    <Box className={streaming ? `${styles.text} ${styles.streaming}` : styles.text}>
+      {toBlocks(streaming ? trimIncomplete(text) : text).map((block, b) => block.kind === 'p' ? (
         <Typography key={b} component="p">
           {block.lines.map((line, l) => <Fragment key={l}>{l > 0 && <br />}{renderInline(line, `${b}-${l}-`)}</Fragment>)}
         </Typography>

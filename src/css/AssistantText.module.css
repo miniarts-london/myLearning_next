@@ -2,3 +2,21 @@
 .text ul,
 .text ol { margin: .375rem 0; padding-left: 1.5rem; }
 .text li { margin-bottom: .125rem; }
+
+/* While the answer streams in: a blinking caret after the last word. */
+.streaming > p:last-child::after,
+.streaming > :is(ul, ol):last-child > li:last-child > span::after {
+  content: '';
+  display: inline-block;
+  width: .5em;
+  height: 1em;
+  margin-left: .125em;
+  vertical-align: text-bottom;
+  background: currentColor;
+  animation: blink 1s steps(1) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .streaming > p:last-child::after,
+  .streaming > :is(ul, ol):last-child > li:last-child > span::after { animation: none; opacity: .5; }
+}

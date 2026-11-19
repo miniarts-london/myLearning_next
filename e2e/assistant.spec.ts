@@ -126,3 +126,48 @@ test('the panel passes the accessibility checks', async ({ page }) => {
   const results = await new AxeBuilder({ page }).include('[role="dialog"]').withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
   expect(results.violations).toEqual([]);
 });
+
+test('it shows "Thinking…" first, streams the answer, and Stop keeps what arrived', async ({ page }) => {
+  await say(page, 'Tell me something slow');
+  const answer = reply(page, 1);
+  await expect(answer.getByText('Thinking…')).toBeVisible();
+  await expect(panel(page).getByRole('button', { name: 'Send' })).toHaveCount(0);
+  await expect(answer).toContainText('Point 2'); // Streaming: part of the answer is in
+  await expect(answer).not.toContainText("That's everything");
+
+  await panel(page).getByRole('button', { name: 'Stop' }).click();
+  await expect(answer.getByText('Stopped.')).toBeVisible();
+  await expect(answer).toContainText('Here is a long answer');
+  await expect(panel(page).getByRole('button', { name: 'Send' })).toBeVisible();
+  const soFar = await answer.textContent();
+  await page.waitForTimeout(1000); // Nothing more arrives after Stop
+  expect(await answer.textContent()).toBe(soFar);
+});
+
+test('Esc stops an answer while it streams, and closes the panel otherwise', async ({ page }) => {
+  await say(page, 'Tell me something slow');
+  await expect(reply(page, 1)).toContainText('Point 1');
+  await page.keyboard.press('Escape');
+  await expect(reply(page, 1).getByText('Stopped.')).toBeVisible();
+  await expect(panel(page)).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(panel(page)).toBeHidden();
+});
+
+test('it follows the answer as it streams in', async ({ page }) => {
+  await page.setViewportSize({ width: 800, height: 500 }); // Short, so the answer needs scrolling
+  await say(page, 'Tell me something slow');
+  await expect(reply(page, 1)).toContainText("That's everything", { timeout: 15_000 });
+  await expect(reply(page, 1).getByText("That's everything")).toBeInViewport();
+});
+
+test('after an error, "Try again" asks again without the failed attempt', async ({ page, request }) => {
+  await say(page, 'Is this flaky?');
+  const answer = reply(page, 1);
+  await expect(answer.getByRole('alert')).toContainText('something went wrong');
+  await answer.getByRole('button', { name: 'Try again' }).click();
+  await expect(reply(page, 1)).toContainText('I can help with your courses');
+  await expect(panel(page).getByRole('alert')).toHaveCount(0);
+  const { last } = await (await request.get(`${CLAUDE}/__last`)).json();
+  expect(last.messages).toEqual([{ role: 'user', content: 'Is this flaky?' }]);
+});

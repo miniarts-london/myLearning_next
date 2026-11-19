@@ -6,6 +6,8 @@
 //   "doing" / "progress"  → list_my_courses, then get_course_overview (two rounds), then sums up
 //   "course say"          → search_course_content (the current course, the learner's words), then answers
 //   "loop"                → keeps asking for tools until the app's step limit stops it
+//   "slow"                → a long answer, a piece every 300ms (to test Stop and scrolling)
+//   "flaky"               → fails with an API error every other time (to test Try again)
 //   anything else         → answers straight away, no tools
 //
 // GET /__last shows the last request (system prompt, tools, messages) for tests to check.
@@ -14,22 +16,29 @@ import http from 'node:http';
 const PORT = Number(process.env.MOCK_ANTHROPIC_PORT ?? 8101);
 let last = null;
 let requests = 0;
+let flakyCalls = 0;
 
-function send(res, blocks, stopReason) {
+const wait = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
+
+async function send(res, blocks, stopReason, delay = 0) {
   res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' });
   const event = (type, data) => res.write(`event: ${type}\ndata: ${JSON.stringify({ type, ...data })}\n\n`);
   event('message_start', { message: { id: `msg_${requests}`, type: 'message', role: 'assistant', model: 'mock', content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 10, output_tokens: 1 } } });
-  blocks.forEach((block, index) => {
+  for (const [index, block] of blocks.entries()) {
     if (block.type === 'text') {
       event('content_block_start', { index, content_block: { type: 'text', text: '' } });
       // Streamed in a few pieces, like the real thing.
-      for (const piece of block.text.match(/[\s\S]{1,40}/g) ?? []) event('content_block_delta', { index, delta: { type: 'text_delta', text: piece } });
+      for (const piece of block.text.match(/[\s\S]{1,40}/g) ?? []) {
+        if (delay) await wait(delay);
+        if (res.destroyed) return; // The app stopped listening (the learner pressed Stop)
+        event('content_block_delta', { index, delta: { type: 'text_delta', text: piece } });
+      }
     } else {
       event('content_block_start', { index, content_block: { type: 'tool_use', id: block.id, name: block.name, input: {} } });
       event('content_block_delta', { index, delta: { type: 'input_json_delta', partial_json: JSON.stringify(block.input) } });
     }
     event('content_block_stop', { index });
-  });
+  }
   event('message_delta', { delta: { stop_reason: stopReason, stop_sequence: null }, usage: { output_tokens: 20 } });
   event('message_stop', {});
   res.end();
@@ -80,12 +89,22 @@ http.createServer((req, res) => {
   req.on('data', (c) => { raw += c; });
   req.on('end', () => {
     if (req.url === '/__last') { res.writeHead(200, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ last, requests })); }
-    if (req.url === '/__reset') { last = null; requests = 0; res.writeHead(200); return res.end('{}'); }
+    if (req.url === '/__reset') { last = null; requests = 0; flakyCalls = 0; res.writeHead(200); return res.end('{}'); }
     if (!req.url?.startsWith('/v1/messages') || !(req.headers['x-api-key'] || req.headers.authorization)) { res.writeHead(401); return res.end('{}'); }
     const body = JSON.parse(raw);
     requests += 1;
     last = body;
+    const question = body.messages.findLast((m) => m.role === 'user' && typeof m.content === 'string')?.content.toLowerCase() ?? '';
+    if (question.includes('flaky') && flakyCalls++ % 2 === 0) {
+      // A 4xx, so the SDK doesn't retry it by itself.
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      return res.end(JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: 'Flaky on purpose' } }));
+    }
+    if (question.includes('slow')) {
+      const lines = Array.from({ length: 12 }, (_, i) => `- Point ${i + 1}: take your time over this one.`);
+      return void send(res, [text(`Here is a long answer.\n${lines.join('\n')}\n\nThat's everything.`)], 'end_turn', 300);
+    }
     const [blocks, stop] = think(body);
-    send(res, blocks, stop);
+    void send(res, blocks, stop);
   });
 }).listen(PORT, () => console.log(`Mock Claude API on http://localhost:${PORT}`));

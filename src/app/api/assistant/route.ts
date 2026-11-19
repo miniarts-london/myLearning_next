@@ -41,7 +41,10 @@ export async function POST(request: NextRequest) {
   const stream = new ReadableStream({
     async start(controller) {
       const encoder = new TextEncoder();
-      const emit = (event: AgentEvent) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+      // Once the learner presses Stop the stream is cancelled, and writing to it would throw.
+      const emit = (event: AgentEvent) => {
+        if (!request.signal.aborted) controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+      };
       try {
         await runAgent({
           client: new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, baseURL: process.env.ANTHROPIC_BASE_URL || undefined }),
@@ -60,7 +63,7 @@ export async function POST(request: NextRequest) {
         }
       } finally {
         emit({ type: 'done', remaining: remainingMessages(session.userid) });
-        controller.close();
+        try { controller.close(); } catch { /* Already cancelled by the browser */ }
       }
     },
   });
