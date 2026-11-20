@@ -95,6 +95,30 @@ Browser ─► /api/assistant (Next.js) ── agent loop (src/lib/agent/run.ts)
 - **Setup.** Put your Claude API key in `.env.local` as `ANTHROPIC_API_KEY`. The button only appears when it's set. Course search also needs the AI service (`npm run ai`, see `ai-service/README.md`); without it, the other tools still work.
 - **Code.** `src/lib/agent/` (loop, tools, prompt, limits), `src/app/api/assistant/route.ts`, `src/components/assistant/` (the panel, and `AssistantText`, a safe renderer for its answers).
 
+### Assistant: known gaps (to do)
+
+To be worked through one at a time. Tick each off when it's done.
+
+**If the network drops halfway through an answer.** It already handles this: the text so far stays, an error with **Try again** appears (Stop shows "Stopped." instead), the server stops calling Claude, and the panel always returns to its ready state. Still to do:
+
+- [ ] **Time out a stalled connection.** If the network stalls rather than fails, `reader.read()` never returns and "Thinking…" stays up forever. Abort after about 30 seconds with no new data and show the usual error.
+- [ ] **Treat a stream without `done` as cut off.** If a proxy closes the stream early, a cut-off answer looks complete. Show an error when the stream ends without the final `done` event.
+- [ ] **Don't charge a message for a failed answer.** `takeMessage` counts a message before the answer is generated, so each Try again costs another one. Give it back when the answer fails.
+
+**Lag on a long answer.** Each text chunk re-renders every turn and re-parses the whole answer (`toBlocks`), and the scroll-to-bottom effect forces a layout each time.
+
+- [ ] **Batch text chunks.** Collect incoming text in a ref and flush it to state once per animation frame (`requestAnimationFrame`).
+- [ ] **Memoise finished turns.** Move each turn into a `React.memo` component so only the one still streaming re-renders.
+- [ ] **Re-parse only the last block.** Cache the blocks of completed paragraphs. Do this only if profiling shows it's still needed after the two items above.
+- [ ] **Measure first and after.** Use the React Profiler and the browser's Performance panel with a CPU slowdown on a long answer.
+
+**Accessibility.** Already in place: a labelled dialog that traps focus, `aria-live="polite"` on the newest answer with `aria-busy` while it streams, step icons hidden with a visually hidden "(failed)", Enter/Shift+Enter/Esc, focus back in the message box after each answer, a caret that respects reduced motion, and axe checks in e2e. Still to do:
+
+- [ ] **Keep focus when Send turns into Stop.** Clicking Send removes that button, so focus falls to the page body. Move focus to Stop, or keep one button that changes its label.
+- [ ] **Label who said what.** Add a visually hidden "You asked:" before each question and "Assistant:" before each answer.
+- [ ] **Announce errors reliably.** An error inside an `aria-busy` region may never be read out. Give the error Alert `role="alert"`.
+- [ ] **Test with screen readers.** Check with VoiceOver and NVDA that "Thinking…", the steps and "Stopped." are read out sensibly.
+
 ## Theme and colours
 
 The whole UI is built with [Material UI](https://mui.com/material-ui/) (MUI 9) and its icons. Colours, fonts and default component styles live in one place, `src/theme.ts`:
